@@ -1,0 +1,38 @@
+{
+  "name": "vision-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --test tests/*.test.mjs",
+    "test:postgres:readiness": "node scripts/check-postgres-integration.mjs",
+    "test:postgres:transactions": "node scripts/run-postgres-transaction-tests.mjs",
+    "test:postgres:schema": "node scripts/check-postgres-schema.mjs",
+    "test:postgres:security": "node scripts/check-postgres-security.mjs",
+    "test:postgres:environment": "node scripts/check-local-postgres-environment.mjs",
+    "check:build": "node scripts/check-app-build.mjs",
+    "verify:build": "node scripts/check-app-build.mjs --build",
+    "preview:offline": "node scripts/preview-server.mjs",
+    "check:source": "node scripts/check-source-tree.mjs",
+    "check:typescript-source": "node scripts/check-typescript-source.mjs",
+    "check:module-graph": "node scripts/check-app-module-graph.mjs",
+    "check:cloud-declarations": "node scripts/check-cloud-declarations.mjs"
+  },
+  "dependencies": {
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.468.0",
+    "@supabase/ssr": "^0.6.0",
+    "@supabase/supabase-js": "^2.50.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  },
+  "type": "module"
+}
