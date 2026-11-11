@@ -43,7 +43,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vision-app-build-diagnostics
+          name: vision-build-log
           path: vision-build.log
           if-no-files-found: ignore
   browser-preview:
@@ -67,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vision-preview-browser-diagnostics
+          name: vision-browser-log
           path: |
             browser-test-artifacts/
             preview-server.log
