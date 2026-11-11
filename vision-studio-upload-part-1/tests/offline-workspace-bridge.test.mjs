@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {once} from 'node:events';
+import {createPreviewServer} from '../scripts/preview-server.mjs';
+const bridgeSource=await readFile(new URL('../preview/workspace-bridge.mjs',import.meta.url),'utf8');
+const workspaceSource=await readFile(new URL('../lib/workspace.mjs',import.meta.url),'utf8');
+test('offline bridge uses actual workspace domain operations',()=>{for(const name of ['createProduction','addScene','approveScene','canBegin','projectProductions'])assert.match(bridgeSource,new RegExp(name));});
+test('offline preview UI includes scene editor and approval planning',async()=>{const html=await readFile(new URL('../preview/index.html',import.meta.url),'utf8');assert.match(html,/newScene\(/);assert.match(html,/setSceneApproval\(/);assert.match(html,/planningReady\(/);assert.match(html,/saveAtomicWorkspace\(/);});
+test('offline preview serves only explicit local modules',async()=>{const server=createPreviewServer();server.listen(0,'127.0.0.1');await once(server,'listening');try{const base=`http://127.0.0.1:${server.address().port}`;for(const path of ['/workspace-bridge.mjs','/lib/workspace.mjs','/lib/budget.mjs']){const res=await fetch(base+path);assert.equal(res.status,200);assert.match(res.headers.get('content-type'),/javascript/);}assert.equal((await fetch(base+'/lib/cloud/studio-cloud.mjs')).status,404);}finally{await new Promise(resolve=>server.close(resolve));}});
+test('domain model maintains hard caps and approvals',async()=>{const {createProduction,addScene,approveScene,canBegin,reserveJob}=await import('../lib/workspace.mjs');let p=createProduction('p1','music','Video','v1');p=addScene(p,{id:'s1',description:'Opening'});assert.equal(canBegin(p,'approval'),false);p=approveScene(p,'s1',true);assert.equal(canBegin(p,'approval'),true);assert.throws(()=>reserveJob(p,'j1',501),/Hard cap/);});

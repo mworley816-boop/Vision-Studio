@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {inspectCloudDeclarations} from '../scripts/check-cloud-declarations.mjs';
+const implementation=readFileSync(new URL('../lib/cloud/studio-cloud.mjs',import.meta.url),'utf8');
+const declarations=readFileSync(new URL('../lib/cloud/studio-cloud.d.mts',import.meta.url),'utf8');
+test('cloud TypeScript declarations cover every implementation export',()=>assert.deepEqual(inspectCloudDeclarations(implementation,declarations),{missing:[],obsolete:[],duplicateDeclarations:[]}));
+test('missing exported function is detected',()=>assert.deepEqual(inspectCloudDeclarations('export async function fetchProject(){}','').missing,['fetchProject']));
+test('obsolete declaration is detected',()=>assert.deepEqual(inspectCloudDeclarations('','export function removed():void;').obsolete,['removed']));
+test('duplicate declarations are detected',()=>assert.deepEqual(inspectCloudDeclarations('export function x(){}','export function x():void;\nexport function x():void;').duplicateDeclarations,['x']));

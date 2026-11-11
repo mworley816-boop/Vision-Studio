@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {approveVisualReview,authorizeReviewedRender} from '../lib/secure-review-approvals.mjs';
+const base={actor:{id:'owner'},projectId:'p',productionId:'v',sceneId:'s',reviewId:'r'};
+const ledger={projectId:'p',productionId:'v',revision:3};
+const review={...base,generatedAssetId:'a',ledgerRevision:3,revision:0,decision:'pending',findings:[]};
+const store=()=>({authorize:async()=>true,loadReview:async()=>structuredClone(review),loadLedger:async()=>ledger,compareAndSwapReview:async()=>true,verifyAsset:async()=>({projectId:'p',productionId:'v',assetId:'a',verified:true}),enqueueRenderIfCurrent:async()=>({accepted:true,jobId:'job-1'})});
+const approve=({storeOverrides={},...overrides}={})=>approveVisualReview({...base,expectedRevision:0,decisions:[{kind:'character',outcome:'match'}],requiredChecks:['character'],...overrides},{...store(),...storeOverrides});
+test('human review approval succeeds with trusted authorized store',async()=>assert.deepEqual(await approve(),{reviewId:'r',decision:'approved',revision:2}));
+test('mismatch blocks approval',async()=>assert.equal((await approve({decisions:[{kind:'character',outcome:'mismatch',notes:'wrong outfit'}]})).decision,'blocked'));
+test('rejects unauthorized approval',async()=>await assert.rejects(approve({storeOverrides:{authorize:async()=>false}}),/Forbidden/));
+test('rejects stale review and ledger',async()=>{await assert.rejects(approve({expectedRevision:1}),/Stale/);await assert.rejects(approve({storeOverrides:{loadLedger:async()=>({...ledger,revision:4})}}),/Continuity changed/)});
+test('rejects concurrent write',async()=>await assert.rejects(approve({storeOverrides:{compareAndSwapReview:async()=>false}}),/Concurrent/));
+test('render requires trusted approval',async()=>await assert.rejects(authorizeReviewedRender({...base,assetId:'a'},store()),/approved visual review/));
+test('render enqueues approved verified asset',async()=>{const s=store();s.loadReview=async()=>({...review,decision:'approved',revision:2});assert.deepEqual(await authorizeReviewedRender({...base,assetId:'a'},s),{jobId:'job-1',accepted:true})});
+test('render rejects changed ledger, wrong asset, or failed atomic enqueue',async()=>{const s=store();s.loadReview=async()=>({...review,decision:'approved',revision:2});await assert.rejects(authorizeReviewedRender({...base,assetId:'wrong'},s));s.enqueueRenderIfCurrent=async()=>({accepted:false});await assert.rejects(authorizeReviewedRender({...base,assetId:'a'},s),/rejected/)});

@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {defineProvider,chooseProvider,enqueueGeneration,completeGeneration,failGeneration,validateProviderQuote} from '../lib/generation-engine.mjs';
+const provider=(id,kind,max,enabled=true)=>defineProvider({id,kind,estimatedCents:max,maximumCents:max,enabled});
+const fixture=(kind='music')=>({production:{id:'v1',projectId:'p1',kind,spentCents:0,reservedCents:0,jobs:[]},plan:{id:'plan-v1',projectId:'p1',productionId:'v1',kind,status:'ready',shots:[{sceneId:'s1',status:'planned',assetIds:[]}]}});
+test('provider prices must be bounded',()=>assert.throws(()=>defineProvider({id:'a',kind:'motion',estimatedCents:100,maximumCents:50}),/Maximum/));
+test('falls back to cheaper stills when motion exceeds cap',()=>{const p={kind:'music',spentCents:400,reservedCents:0};assert.equal(chooseProvider(p,[provider('motion','motion',200),provider('still','still',60)]).id,'still');});
+test('no affordable provider means no paid job',()=>assert.equal(chooseProvider({kind:'music',spentCents:490,reservedCents:0},[provider('m','motion',50)]),null));
+test('disabled providers never selected',()=>assert.equal(chooseProvider({kind:'music',spentCents:0,reservedCents:0},[provider('m','motion',20,false)]),null));
+test('queue reserves maximum possible cost',()=>{const f=fixture();const result=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',300),'job1');assert.equal(result.production.reservedCents,300);});
+test('completion settles and releases unused reservation',()=>{const f=fixture();const q=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',300),'job1');const r=completeGeneration(q.production,q.plan,q.job,250,'asset1');assert.equal(r.production.spentCents,250);assert.equal(r.production.reservedCents,0);});
+test('failure releases reservation',()=>{const f=fixture('episode');const q=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',700),'job1');const r=failGeneration(q.production,q.plan,q.job);assert.equal(r.production.reservedCents,0);assert.equal(r.plan.shots[0].status,'planned');});
+test('unexpected overcharge is blocked',()=>{const f=fixture();const q=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',200),'job1');assert.throws(()=>completeGeneration(q.production,q.plan,q.job,201,'asset1'),/beyond reserved/);});
+test('provider quote requires verified timestamp and USD',()=>{assert.throws(()=>validateProviderQuote({maximumCents:20,currency:'USD'}),/timestamp/);assert.equal(validateProviderQuote({maximumCents:20,currency:'USD',verifiedAt:'2026-11-05'}),true);});

@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createBackup,parseBackup,validateProjects} from '../preview/backup.mjs';
+import {createPreviewServer} from '../scripts/preview-server.mjs';
+import {once} from 'node:events';
+const sample=[{id:'abc_123',name:' My Video ',kind:'music',mode:'approval'}];
+test('backup round trip validates and normalizes local projects',()=>{const backup=createBackup(sample);assert.equal(backup.format,'vision-studio-preview-v1');assert.deepEqual(parseBackup(JSON.stringify(backup)),[{...sample[0],name:'My Video'}]);});
+test('backup rejects wrong format and malformed JSON',()=>{assert.throws(()=>parseBackup('not json'),/valid JSON/);assert.throws(()=>parseBackup(JSON.stringify({format:'unknown',projects:[]})),/Unsupported/);});
+test('backup rejects duplicate IDs, invalid types and oversized collections',()=>{assert.throws(()=>validateProjects([...sample,...sample]),/duplicate/);assert.throws(()=>validateProjects([{...sample[0],mode:'paid'}]),/Invalid project/);assert.throws(()=>validateProjects(Array(501).fill(sample[0])),/500/);});
+test('backup strips untrusted extra properties and rejects oversized payload',()=>{assert.deepEqual(validateProjects([{...sample[0],secret:'do-not-import'}])[0],{...sample[0],name:'My Video'});assert.throws(()=>parseBackup('x'.repeat(500001)),/too large/);});
+test('preview serves local backup module with no external network permissions',async()=>{const server=createPreviewServer();server.listen(0,'127.0.0.1');await once(server,'listening');try{const base=`http://127.0.0.1:${server.address().port}`;const module=await fetch(base+'/backup.mjs');assert.equal(module.status,200);assert.match(module.headers.get('content-type'),/javascript/);assert.match(await module.text(),/parseBackup/);const page=await fetch(base);assert.match(await page.text(),/Export JSON backup/);assert.match(page.headers.get('content-security-policy'),/connect-src 'none'/);}finally{await new Promise(resolve=>server.close(resolve));}});

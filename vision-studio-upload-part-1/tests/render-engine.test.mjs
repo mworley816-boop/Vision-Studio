@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {prepareRender,ffmpegCommand} from '../lib/render-engine.mjs';
+const manifest={status:'awaiting_renderer',kind:'music',projectId:'p',productionId:'v',scenes:[{sceneId:'a',assetIds:['img']},{sceneId:'b',assetIds:['clip']}]};
+const opts={sceneAssets:{a:{assetId:'img',path:'/tmp/one.png'},b:{assetId:'clip',path:'/tmp/two.mp4'}},sceneDurations:[90,90],audioPath:'/tmp/song.mp3',outputPath:'/tmp/final.mp4'};
+test('plans full-length landscape video',()=>{const r=prepareRender(manifest,opts);assert.equal(r.targetDurationSeconds,180);assert.equal(r.inputs.length,2);assert.equal(r.profile.width,1920)});
+test('builds FFmpeg command with image loop, concat and audio',()=>{const {args}=ffmpegCommand(prepareRender(manifest,opts));assert.ok(args.includes('-loop'));assert.ok(args.join(' ').includes('concat=n=2'));assert.ok(args.includes('-c:a'));assert.equal(args.at(-1),'/tmp/final.mp4')});
+test('supports portrait output',()=>assert.equal(prepareRender(manifest,{...opts,orientation:'portrait'}).profile.height,1920));
+test('rejects wrong total duration',()=>assert.throws(()=>prepareRender(manifest,{...opts,sceneDurations:[50,50]}),/total/));
+test('rejects unapproved asset',()=>assert.throws(()=>prepareRender(manifest,{...opts,sceneAssets:{...opts.sceneAssets,a:{assetId:'other',path:'/tmp/one.png'}}}),/match/));
+test('rejects relative and unsupported media paths',()=>assert.throws(()=>prepareRender(manifest,{...opts,outputPath:'out.mp4'}),/Absolute/));
+test('supports seven-minute episodes',()=>assert.equal(prepareRender({...manifest,kind:'episode'},{...opts,sceneDurations:[210,210]}).targetDurationSeconds,420));
+test('does not allow rendering incomplete manifest',()=>assert.throws(()=>prepareRender({...manifest,status:'in_progress'},opts),/Invalid render manifest/));

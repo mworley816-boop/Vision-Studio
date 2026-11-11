@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {renameProject,changePlanningMode} from '../preview/project-editor.mjs';
+const sample=[{id:'a',name:'First',kind:'music',mode:'approval'},{id:'b',name:'Second',kind:'episode',mode:'automatic'}];
+test('rename preserves project type, mode and isolation',()=>{const next=renameProject(sample,'a','  New title  ');assert.equal(next[0].name,'New title');assert.deepEqual(next[1],sample[1]);assert.equal(sample[0].name,'First');});
+test('rename rejects empty and oversized names',()=>{assert.throws(()=>renameProject(sample,'a','   '));assert.throws(()=>renameProject(sample,'a','x'.repeat(101)));});
+test('mode change updates only target without authorizing generation',()=>{const next=changePlanningMode(sample,'b','approval');assert.equal(next[1].mode,'approval');assert.deepEqual(next[0],sample[0]);});
+test('unknown projects and invalid modes fail closed',()=>{assert.throws(()=>renameProject(sample,'missing','X'));assert.throws(()=>changePlanningMode(sample,'a','publish'));});
+test('preview server serves editor module',async()=>{const {createPreviewServer}=await import('../scripts/preview-server.mjs');const {once}=await import('node:events');const server=createPreviewServer();server.listen(0,'127.0.0.1');await once(server,'listening');try{const res=await fetch(`http://127.0.0.1:${server.address().port}/project-editor.mjs`);assert.equal(res.status,200);assert.match(await res.text(),/renameProject/);}finally{await new Promise(r=>server.close(r));}});

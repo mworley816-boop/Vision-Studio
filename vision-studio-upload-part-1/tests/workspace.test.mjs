@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createProduction,addScene,approveScene,canBegin,reserveJob,settleJob,projectProductions} from '../lib/workspace.mjs';
+test('project isolation',()=>{const a=createProduction('a','music','Song','1');const b=createProduction('b','episode','Pilot','2');assert.deepEqual(projectProductions([a,b],'a').map(x=>x.id),['1']);});
+test('approval gating',()=>{let p=createProduction('a','music','Song','1');p=addScene(p,{id:'s1',description:'Opening'});assert.equal(canBegin(p,'approval'),false);assert.equal(canBegin(p,'automatic'),true);p=approveScene(p,'s1',true);assert.equal(canBegin(p,'approval'),true);});
+test('music cap enforced per production',()=>{let p=createProduction('a','music','Song','1');p=reserveJob(p,'j1',400);assert.throws(()=>reserveJob(p,'j2',101));assert.throws(()=>reserveJob(p,'j1',1));p=settleJob(p,'j1',300);assert.equal(p.spentCents,300);assert.equal(p.reservedCents,0);assert.throws(()=>settleJob(p,'j1',1));});
+test('episode cap enforced',()=>{let p=createProduction('a','episode','Pilot','2');p=reserveJob(p,'j1',2000);assert.throws(()=>reserveJob(p,'j2',1));assert.throws(()=>settleJob(p,'j1',2001));});

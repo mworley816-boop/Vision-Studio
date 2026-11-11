@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const route=readFileSync(new URL('../app/api/production-feed/route.ts',import.meta.url),'utf8');
+const query=readFileSync(new URL('../lib/cloud/production-feed-request.mjs',import.meta.url),'utf8');
+const page=readFileSync(new URL('../app/production/page.tsx',import.meta.url),'utf8');
+test('production feed authenticates server-side and does not use service credentials',()=>{assert.match(route,/auth\.getUser\(\)/);assert.doesNotMatch(route,/SERVICE_ROLE|service_role/);});
+test('production feed uses authenticated security-invoker view',()=>{assert.match(query,/studio_production_feed/);assert.match(route,/executeProductionFeedQuery/);assert.match(route,/loadTrustedProductionFeed/);});
+test('production feed is never cached',()=>{assert.match(route,/no-store/);assert.match(route,/force-dynamic/);});
+test('dashboard does not present demonstration records as live by default',()=>{assert.match(page,/useState<Job\[\]>\(\[\]\)/);assert.match(page,/Refresh trusted feed/);assert.match(page,/setSource\('demo'\)/);});

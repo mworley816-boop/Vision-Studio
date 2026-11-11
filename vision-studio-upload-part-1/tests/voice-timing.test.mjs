@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {buildVoiceCast,estimateSpeechSeconds,planDialogueTiming} from '../lib/voice-timing.mjs';
+const bible={characters:[{id:'a',name:'Bunny',voice:'bright',voiceId:'voice-1'}]};
+test('voice casting preserves character identity',()=>assert.equal(buildVoiceCast(bible).get('bunny').voiceId,'voice-1'));
+test('duplicate speaker names rejected',()=>assert.throws(()=>buildVoiceCast({characters:[...bible.characters,{id:'b',name:'bunny'}]}),/Duplicate/));
+test('speech estimate scales with words',()=>assert.ok(estimateSpeechSeconds('one two three')>estimateSpeechSeconds('one')));
+test('timing creates stable scene offsets',()=>{const p=planDialogueTiming({bible,storyboard:{scenes:[{id:'1',duration:10,dialogue:{speaker:'Bunny',text:'Hello friend'}},{id:'2',duration:15,narration:'And then'}]}});assert.equal(p.cues[1].startSeconds,10);assert.equal(p.runtimeSeconds,25)});
+test('missing narrator voice is flagged',()=>{const p=planDialogueTiming({bible,storyboard:{scenes:[{id:'1',duration:10,narration:'Hello'}]}});assert.equal(p.readyForSynthesis,false);assert.match(p.warnings[0],/Narrator/)});
+test('overlong dialogue is detected',()=>{const p=planDialogueTiming({bible,storyboard:{scenes:[{id:'1',duration:0.5,dialogue:{speaker:'Bunny',text:'One two three four five six seven eight nine ten'}}]}});assert.ok(p.cues[0].overrunSeconds>0)});
+test('invalid speech rates rejected',()=>assert.throws(()=>estimateSpeechSeconds('test',{wordsPerMinute:0}),/Speech rate/));
+test('invalid scene duration rejected',()=>assert.throws(()=>planDialogueTiming({storyboard:{scenes:[{duration:-1}]}}),/Invalid scene/));

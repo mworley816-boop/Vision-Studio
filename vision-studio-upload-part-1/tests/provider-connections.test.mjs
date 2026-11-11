@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {providerDefinitions,resolveServerCredential,validateProviderAdapter,testProviderConnection,connectionSummary} from '../lib/cloud/provider-connections.mjs';
+const key='secret-credential-value-123';
+const adapter={provider:'video',capability:'video',supportsIdempotency:true,checkConnection:async ({credential})=>({ok:credential===key}),submit:async()=>({})};
+test('provider definitions expose env names, not secrets',()=>{assert.equal(providerDefinitions().length,3);assert.equal(JSON.stringify(providerDefinitions()).includes(key),false);});
+test('credential is resolved only from allowlisted server env',()=>{assert.equal(resolveServerCredential('video',{env:{VISION_VIDEO_API_KEY:key}}),key);assert.throws(()=>resolveServerCredential('video',{env:{VISION_VIDEO_API_KEY:key},server:false}));assert.throws(()=>resolveServerCredential('unknown',{env:{}}));});
+test('invalid or missing credentials fail closed',()=>{assert.throws(()=>resolveServerCredential('video',{env:{VISION_VIDEO_API_KEY:'short'}}));assert.throws(()=>resolveServerCredential('video',{env:{}}));});
+test('adapter requires idempotency and read-only probe',()=>{assert.equal(validateProviderAdapter(adapter,'video'),true);assert.throws(()=>validateProviderAdapter({...adapter,supportsIdempotency:false},'video'));});
+test('probe reports connection without exposing secrets',async()=>{const result=await testProviderConnection({provider:'video',adapter,env:{VISION_VIDEO_API_KEY:key}});assert.deepEqual(result,{provider:'video',status:'connected'});assert.equal(JSON.stringify(result).includes(key),false);});
+test('probe never submits paid requests',async()=>{let submitted=false;await testProviderConnection({provider:'video',adapter:{...adapter,submit:async()=>{submitted=true;}},env:{VISION_VIDEO_API_KEY:key}});assert.equal(submitted,false);});
+test('probe handles missing credentials and adapter',async()=>{assert.equal((await testProviderConnection({provider:'video',adapter,env:{}})).status,'not_configured');assert.equal((await testProviderConnection({provider:'video',env:{VISION_VIDEO_API_KEY:key}})).status,'adapter_unavailable');});
+test('probe redacts thrown secret-containing provider errors',async()=>{const result=await testProviderConnection({provider:'video',adapter:{...adapter,checkConnection:async()=>{throw Error(key);}},env:{VISION_VIDEO_API_KEY:key}});assert.deepEqual(result,{provider:'video',status:'unverified'});});
+test('probe timeout is bounded and aborts',async()=>{const result=await testProviderConnection({provider:'video',adapter:{...adapter,checkConnection:async()=>new Promise(()=>{})},env:{VISION_VIDEO_API_KEY:key},timeoutMs:100});assert.equal(result.status,'unverified');});
+test('browser caller cannot probe',async()=>{assert.equal((await testProviderConnection({provider:'video',adapter,env:{VISION_VIDEO_API_KEY:key},server:false})).status,'unavailable');});
+test('status summaries strip arbitrary fields',()=>{assert.deepEqual(connectionSummary([{provider:'video',status:'connected',credential:key}]),[{provider:'video',status:'connected'}]);});

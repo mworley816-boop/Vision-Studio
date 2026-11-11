@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {requireStudioOwner,productionBudgetCents,privateAssetPath,createCloudProject} from '../lib/cloud/owner-access.mjs';
+const uid='11111111-1111-4111-8111-111111111111';
+const project='22222222-2222-4222-8222-222222222222';
+const asset='33333333-3333-4333-8333-333333333333';
+const mock = (enrolled=true) => ({auth:{getUser:async()=>({data:{user:{id:uid}}})},from:(table)=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:enrolled?{user_id:uid}:null})})}),insert:(value)=>({select:()=>({single:async()=>({data:{id:project,...value}})})})})});
+test('owner gate accepts enrolled owner',async()=>assert.equal(await requireStudioOwner(mock()),uid));
+test('owner gate rejects unenrolled user',async()=>assert.rejects(requireStudioOwner(mock(false)),/owner/));
+test('owner gate rejects missing auth',async()=>assert.rejects(requireStudioOwner({}),/Authentication/));
+test('cloud project creation uses authenticated owner',async()=>assert.equal((await createCloudProject(mock(),{title:' Episode ',kind:'series'})).owner_id,uid));
+test('cloud project rejects invalid kind',async()=>assert.rejects(createCloudProject(mock(),{title:'Bad',kind:'other'}),/Invalid/));
+test('music and episode caps remain separate',()=>{assert.equal(productionBudgetCents('music'),500);assert.equal(productionBudgetCents('episode'),2000)});
+test('asset paths are scoped to owner and project',()=>assert.equal(privateAssetPath(uid,project,asset,'MP4'),`${uid}/${project}/${asset}.mp4`));
+test('asset paths reject traversal and unsafe types',()=>{assert.throws(()=>privateAssetPath('../',project,asset,'mp4'));assert.throws(()=>privateAssetPath(uid,project,asset,'exe'))});

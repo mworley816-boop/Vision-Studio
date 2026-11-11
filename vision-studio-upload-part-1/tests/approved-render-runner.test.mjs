@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {executeApprovedRender} from '../lib/approved-render-runner.mjs';
+const args={jobId:'job1',workerId:'worker1',projectId:'p1',productionId:'prod1',sceneId:'s1',assetId:'a1',reviewId:'r1',assemblyPlan:{renderPlan:{status:'ready_to_render',inputs:[{}],outputPath:'/tmp/v.mp4',targetDurationSeconds:2},audioMixPlan:{tracks:[],outputPath:'/tmp/a.wav',runtimeSeconds:2}}};
+const store=()=>({claimApprovedRender:async()=>({claimed:true,leaseToken:'lease1'}),loadReview:async()=>null,loadLedger:async()=>null,verifyAsset:async()=>null,completeRender:async()=>true,failRender:async()=>true});
+test('requires trusted store',async()=>{await assert.rejects(executeApprovedRender(args,{}),/Trusted render store/)});
+test('rejects malformed identifiers before claiming',async()=>{let claimed=false;const s=store();s.claimApprovedRender=async()=>{claimed=true;return {claimed:true,leaseToken:'lease1'}};await assert.rejects(executeApprovedRender({...args,projectId:' '},s),/Invalid render identity/);assert.equal(claimed,false)});
+test('rejects denied claims without running',async()=>{const s=store();s.claimApprovedRender=async()=>({claimed:false});await assert.rejects(executeApprovedRender(args,s),/claim rejected/)});
+test('blocks missing approved review and reports safe failure',async()=>{let failed=false;const s=store();s.failRender=async()=>{failed=true;return true};await assert.rejects(executeApprovedRender(args,s),/Approved scene/);assert.equal(failed,true)});
+test('rejects invalid assembly before claiming',async()=>{let claimed=false;const s=store();s.claimApprovedRender=async()=>{claimed=true};await assert.rejects(executeApprovedRender({...args,assemblyPlan:{}},s),/Valid video render plan/);assert.equal(claimed,false)});

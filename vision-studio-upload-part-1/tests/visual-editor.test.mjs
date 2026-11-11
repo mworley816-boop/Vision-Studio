@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {normalizeBible,normalizeStoryboard,addVisualRecord,addScene,moveScene,editScene,approveScene,deleteScene} from '../lib/visual-editor.mjs';
+test('normalizes empty documents',()=>{assert.deepEqual(normalizeBible().characters,[]);assert.deepEqual(normalizeStoryboard().scenes,[])});
+test('character records are isolated and validated',()=>{const a=addVisualRecord({},'characters',{name:'Mira',description:'Red jacket'});assert.equal(a.characters.length,1);assert.throws(()=>addVisualRecord(a,'characters',{name:'mira',description:'other'}));});
+test('scenes reorder and preserve identity',()=>{let d=addScene({}, {description:'One',duration:5});d=addScene(d,{description:'Two',duration:7});assert.equal(moveScene(d,1,-1).scenes[0].description,'Two');assert.equal(d.scenes[0].description,'One');});
+test('editing an approved scene resets approval',()=>{let d=addScene({},{description:'One',duration:5});const id=d.scenes[0].id;d=approveScene(d,id);assert.equal(d.scenes[0].approved,true);d=editScene(d,id,{description:'Changed'});assert.equal(d.scenes[0].approved,false);assert.equal(deleteScene(d,id).scenes.length,0);});
+test('invalid durations are rejected',()=>assert.throws(()=>addScene({},{description:'Bad',duration:0})));

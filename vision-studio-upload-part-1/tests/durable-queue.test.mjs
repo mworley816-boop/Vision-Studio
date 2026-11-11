@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {LocalStudioStore} from '../lib/local-store.mjs';
+async function fixture(fn){const dir=await mkdtemp(join(tmpdir(),'vision-queue-'));try{const s=new LocalStudioStore(dir);await s.createProject({id:'p',title:'Private'});await s.createProduction({id:'v',projectId:'p',kind:'music'});await fn(s);}finally{await rm(dir,{recursive:true,force:true});}}
+test('claim is exclusive and preserves reservation',()=>fixture(async s=>{await s.queueJob({id:'a',productionId:'v',estimatedCents:200});const j=await s.claimNextJob({workerId:'one',now:1000,leaseMs:2000});assert.equal(j.id,'a');assert.equal(await s.claimNextJob({workerId:'two',now:1000,leaseMs:2000}),null);assert.equal((await s.read()).productions[0].reservedCents,200);}));
+test('lease heartbeat requires correct owner',()=>fixture(async s=>{await s.queueJob({id:'a',productionId:'v',estimatedCents:100});await s.claimNextJob({workerId:'one',now:1000,leaseMs:2000});await assert.rejects(s.heartbeatJob('a',{workerId:'two',now:1500,leaseMs:2000}),/mismatch/);await s.heartbeatJob('a',{workerId:'one',now:1500,leaseMs:2000});assert.equal((await s.read()).jobs[0].leaseUntil,3500);}));
+test('expired jobs quarantine without releasing reserved money',()=>fixture(async s=>{await s.queueJob({id:'a',productionId:'v',estimatedCents:100});await s.claimNextJob({workerId:'one',now:1000,leaseMs:2000});assert.equal(await s.quarantineExpiredJobs(3000),1);assert.equal((await s.read()).productions[0].reservedCents,100);assert.equal(await s.claimNextJob({workerId:'two',now:3001}),null);}));
+test('provider-confirmed charge reconciles interrupted job',()=>fixture(async s=>{await s.queueJob({id:'a',productionId:'v',estimatedCents:100});await s.claimNextJob({workerId:'one',now:1000,leaseMs:2000});await s.quarantineExpiredJobs(3000);await s.reconcileJob('a',{actualCents:80,completed:true});const p=(await s.read()).productions[0];assert.equal(p.spentCents,80);assert.equal(p.reservedCents,0);}));
+test('cannot reconcile above reservation',()=>fixture(async s=>{await s.queueJob({id:'a',productionId:'v',estimatedCents:100});await s.claimNextJob({workerId:'one',now:1000,leaseMs:2000});await s.quarantineExpiredJobs(3000);await assert.rejects(s.reconcileJob('a',{actualCents:101,completed:true}),/exceeds reservation/);}));

@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {planStoryboard,validateDirectorDraft} from '../lib/director.mjs';
+const concept='A heroine searches for the lost melody. She finds a glowing stage.';
+for(const [kind,seconds] of [['music',180],['series',420]])test(`${kind} shot planning reaches ${seconds} seconds`,()=>{const p=planStoryboard({kind,concept,sceneCount:13});assert.equal(p.runtime,seconds);assert.ok(validateDirectorDraft(p));assert.ok(p.storyboard.scenes.every(s=>!s.approved));});
+test('character and location references come from the same Bible',()=>{const p=planStoryboard({kind:'series',concept,bible:{characters:[{id:'char-1'}],locations:[{id:'loc-1'}],style:'3D'},sceneCount:3});assert.deepEqual(p.storyboard.scenes[0].characterIds,['char-1']);assert.equal(p.storyboard.scenes[0].locationId,'loc-1')});
+test('invalid inputs rejected',()=>{for(const opts of [{kind:'unknown',concept},{kind:'music',concept:'short'},{kind:'series',concept,sceneCount:61},{kind:'music',concept,mode:'oops'}])assert.throws(()=>planStoryboard(opts))});
+test('drafts do not auto-approve even in automatic planning mode',()=>{const p=planStoryboard({kind:'music',concept,mode:'auto'});assert.equal(p.requiresApproval,false);assert.ok(p.storyboard.scenes.every(s=>s.approved===false))});

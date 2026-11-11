@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { sha256, storageKey, verifyAssetBytes, registerAsset, findReusableAsset, attachAssetToScene, storageSummary } from '../lib/cloud/asset-registry.mjs';
+const bytes = new Uint8Array([1,2,3]);
+const digest = sha256(bytes);
+const asset = () => verifyAssetBytes({ projectId: 'projectA', assetId: 'asset1', type: 'image', mimeType: 'image/png', bytes, expectedSha256: digest });
+test('verifies bytes and derives project-scoped storage key', () => { assert.equal(asset().storageKey, `projects/projectA/assets/asset1/${digest}`); });
+test('rejects modified content', () => assert.throws(() => verifyAssetBytes({projectId:'projectA',assetId:'asset1',type:'image',mimeType:'image/png',bytes,expectedSha256:'0'.repeat(64)}), /checksum/));
+test('rejects path traversal in storage keys', () => assert.throws(() => storageKey('../other','asset1',digest), /projectId/));
+test('rejects MIME mismatches', () => assert.throws(() => verifyAssetBytes({projectId:'projectA',assetId:'asset1',type:'image',mimeType:'video/mp4',bytes,expectedSha256:digest}), /MIME/));
+test('rejects oversized assets', () => assert.throws(() => registerAsset([], {projectId:'projectA',assetId:'a',type:'image',mimeType:'image/png',bytes:25_000_001,sha256:digest,status:'verified',verified:true}), /size/));
+test('prevents duplicate asset IDs within a project', () => assert.throws(() => registerAsset([asset()],asset()), /Duplicate/));
+test('allows same asset ID in distinct projects', () => { const a={...asset(),projectId:'projectB'}; assert.equal(registerAsset([asset()],a).length,2); });
+test('reuses only verified assets from same project', () => { const r=[asset()]; assert.equal(findReusableAsset(r,{projectId:'projectA',type:'image',sha256:digest})?.assetId,'asset1'); assert.equal(findReusableAsset(r,{projectId:'projectB',type:'image',sha256:digest}),null); });
+test('blocks quarantined assets from reuse', () => { const r=[{...asset(),status:'quarantined',verified:false}]; assert.equal(findReusableAsset(r,{projectId:'projectA',type:'image',sha256:digest}),null); });
+test('scene attachment enforces project and type', () => { const r=[asset()]; assert.equal(attachAssetToScene(r,{projectId:'projectA',assetId:'asset1',sceneId:'scene1',expectedType:'image'}).sceneId,'scene1'); assert.throws(() => attachAssetToScene(r,{projectId:'projectB',assetId:'asset1',sceneId:'scene1'}),/unavailable/); assert.throws(() => attachAssetToScene(r,{projectId:'projectA',assetId:'asset1',sceneId:'scene1',expectedType:'video'}),/type/); });
+test('reports per-project storage usage', () => { const r=[asset(),{...asset(),projectId:'projectB'}]; assert.deepEqual(storageSummary(r,'projectA'),{assetCount:1,verifiedCount:1,totalBytes:3}); });

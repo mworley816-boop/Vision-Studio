@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {loadTrustedProductionFeed} from '../lib/cloud/trusted-production-feed.mjs';
+const actor={id:'owner1',authenticated:true};
+const record={id:'job1',ownerId:'owner1',projectId:'project1',productionId:'prod1',kind:'music',mode:'approval',status:'draft',version:1,spentCents:0,reservedCents:0};
+const store={async listOwnerWorkflows(){return [record]}};
+const args={actor,ownerId:'owner1',store};
+test('returns redacted, read-only owner production feed',async()=>{const result=await loadTrustedProductionFeed(args);assert.equal(result.source,'trusted-server');assert.equal(result.summary.total,1);assert.equal(result.rows[0].capCents,500);assert.equal(result.rows[0].ownerId,undefined);});
+test('rejects unauthorized users before store reads',async()=>{let calls=0;await assert.rejects(loadTrustedProductionFeed({...args,actor:{id:'other',authenticated:true},store:{listOwnerWorkflows(){calls++}}}),/Not authorized/);assert.equal(calls,0);});
+test('rejects cross-owner and cross-project store leakage',async()=>{await assert.rejects(loadTrustedProductionFeed({...args,store:{async listOwnerWorkflows(){return [{...record,ownerId:'other'}]}}}),/Cross-owner/);await assert.rejects(loadTrustedProductionFeed({...args,projectId:'project2'}),/Cross-project/);});
+test('rejects invalid filters and excessive result sets',async()=>{await assert.rejects(loadTrustedProductionFeed({...args,status:'fake'}),/Unknown status/);await assert.rejects(loadTrustedProductionFeed({...args,limit:501}),/Invalid limit/);await assert.rejects(loadTrustedProductionFeed({...args,store:{async listOwnerWorkflows(){return [record,record]}}}),/Duplicate workflow/);});
+test('filters statuses and does not expose arbitrary store fields',async()=>{const result=await loadTrustedProductionFeed({...args,status:'complete',store:{async listOwnerWorkflows(){return [{...record,secret:'private'}]}}});assert.equal(result.summary.total,0);const other=await loadTrustedProductionFeed({...args,store:{async listOwnerWorkflows(){return [{...record,secret:'private'}]}}});assert.equal(JSON.stringify(other).includes('private'),false);});

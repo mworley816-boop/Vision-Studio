@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {inspectSourceTree} from '../scripts/check-source-tree.mjs';
+const root=join(import.meta.dirname,'..');
+test('Phase 59 package has one canonical application source tree',()=>{const report=inspectSourceTree(root);assert.equal(report.ok,true,report.issues.join('; '))});
+test('source tree check detects nested legacy phase copies',()=>{const temp=mkdtempSync(join(tmpdir(),'vision-tree-'));try{for(const p of ['app','components','lib','preview','tests'])mkdirSync(join(temp,p));mkdirSync(join(temp,'vision-studio-phase54-src'));for(const p of ['app/page.tsx','app/layout.tsx','package.json'])writeFileSync(join(temp,p),'{}');writeFileSync(join(temp,'tsconfig.json'),JSON.stringify({exclude:['node_modules']}));const result=inspectSourceTree(temp);assert.equal(result.ok,false);assert.match(result.issues.join(' '),/Nested legacy source tree/)}finally{rmSync(temp,{recursive:true,force:true})}});
+test('source tree check detects missing application entrypoint',()=>{const temp=mkdtempSync(join(tmpdir(),'vision-tree-'));try{const result=inspectSourceTree(temp);assert.equal(result.ok,false);assert.match(result.issues.join(' '),/app\/page.tsx/)}finally{rmSync(temp,{recursive:true,force:true})}});
