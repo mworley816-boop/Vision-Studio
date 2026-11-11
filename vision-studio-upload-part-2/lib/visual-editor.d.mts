@@ -1,0 +1,9 @@
+export function normalizeBible(value?:any):any;
+export function normalizeStoryboard(value?:any):any;
+export function addScene(document:any,scene:any):any;
+export function moveScene(document:any,index:number,delta:number):any;
+export function editScene(document:any,id:string,changes:any):any;
+export function approveScene(document:any,id:string):any;
+export function deleteScene(document:any,id:string):any;
+export function addVisualRecord(bible:any,kind:'characters'|'locations',record:any):any;
+export function deleteVisualRecord(bible:any,kind:'characters'|'locations',id:string):any;
