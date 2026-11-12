@@ -11,3 +11,7 @@ export function assertOwnerId(value:unknown):string;
 export function validateUpload(args:{ownerId:string,projectId:string,fileName:string,bytes:number,mime:string}):string;
 export function requireStudioOwner(client:any):Promise<{id:string}>;
 export function validateDocument(value:Record<string,unknown>,kind:'bible'|'storyboard'):Record<string,unknown>;
+
+export type PrivateMediaAsset={id:string,storage_path:string,media_type:string,created_at:string};
+export function listPrivateAssets(client:any,projectId:string):Promise<PrivateMediaAsset[]>;
+export function getPrivateAssetUrl(client:any,asset:PrivateMediaAsset):Promise<string>;
