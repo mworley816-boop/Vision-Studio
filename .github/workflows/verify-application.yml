@@ -101,7 +101,28 @@ jobs:
         shell: bash
         run: |
           npm run dev -- --hostname 127.0.0.1 --port 4190 > vision-next-server.log 2>&1 &
-          node scripts/wait-for-next.mjs 2>&1 | tee vision-next-readiness.log
+          SERVER_PID=$!
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --noproxy '*' --fail --silent --show-error --max-time 3 "$VISION_NEXT_TEST_URL" -o /dev/null 2>> vision-next-readiness.log; then
+              echo "Next.js HTTP ready after ${attempt} attempt(s)" | tee -a vision-next-readiness.log
+              ready=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "Next.js starter process exited early" | tee -a vision-next-readiness.log
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "Next.js did not respond to HTTP readiness checks"
+            echo "--- server output ---"
+            cat vision-next-server.log
+            echo "--- HTTP checks ---"
+            tail -30 vision-next-readiness.log
+            exit 1
+          fi
           python browser-tests/test_next_dashboard.py
       - name: Upload dashboard browser diagnostics
         if: always()
