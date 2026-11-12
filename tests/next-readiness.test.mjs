@@ -20,7 +20,7 @@ test('rejects invalid readiness configuration', async () => {
 });
 test('CI waits for Next readiness before launching browser and retains log', () => {
   const workflow=readFileSync(new URL('../.github/workflows/verify-application.yml',import.meta.url),'utf8');
-  const wait=workflow.indexOf('node scripts/wait-for-next.mjs');
+  const wait=workflow.indexOf('curl --noproxy');
   const browser=workflow.indexOf('python browser-tests/test_next_dashboard.py');
   assert.ok(wait>=0 && browser>wait);
   assert.match(workflow,/vision-next-readiness\.log/);
