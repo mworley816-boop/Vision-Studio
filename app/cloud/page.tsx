@@ -8,7 +8,7 @@ import {normalizeBible,normalizeStoryboard} from '../../lib/visual-editor.mjs';
 import {createCloudProject,listCloudProjects,createCloudProduction,uploadPrivateAsset,loadCloudProject,listCloudProductions,saveVisualBible,saveStoryboard,listPrivateAssets,getPrivateAssetUrl} from '../../lib/cloud/studio-cloud.mjs';
 type Project={id:string,title:string,kind:string};
 type MediaAsset={id:string,storage_path:string,media_type:string,created_at:string};
-const getReferencePreviewUrl=(asset:{id:string,media_type:string,storage_path:string})=>getPrivateAssetUrl(browserClient(),asset);
+const getReferencePreviewUrl=(asset:{id:string,media_type:string,storage_path:string,created_at:string})=>getPrivateAssetUrl(browserClient(),asset);
 export default function CloudWorkspace(){const [assets,setAssets]=useState<MediaAsset[]>([]),[selected,setSelected]=useState<string|null>(null),[bible,setBible]=useState<any>({}),[bibleRevision,setBibleRevision]=useState(0),[productions,setProductions]=useState<any[]>([]),[activeProduction,setActiveProduction]=useState<string|null>(null),[storyboard,setStoryboard]=useState<any>({scenes:[]}),[storyRevision,setStoryRevision]=useState(0),[projects,setProjects]=useState<Project[]>([]),[title,setTitle]=useState(''),[kind,setKind]=useState('music'),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  async function refresh(){const data=await listCloudProjects(browserClient());setProjects(data)}
  useEffect(()=>{refresh().catch(e=>setMessage(e.message))},[]);
