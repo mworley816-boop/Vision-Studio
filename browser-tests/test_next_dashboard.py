@@ -32,13 +32,13 @@ try:
         # A fresh browser profile imports offline v3 projects without deleting the source.
         migration_context = browser.new_context()
         migration_page = migration_context.new_page()
-        migration_page.add_init_script("""() => {
+        migration_page.add_init_script("""(() => {
             localStorage.setItem('vision-studio-offline-workspace-v3', JSON.stringify({
                 version:3,
                 projects:[{id:'migration-p1',name:'Migrated film',kind:'music',mode:'approval'}],
                 productions:[]
             }));
-        }""")
+        })()""")
         migration_page.goto(BASE, wait_until='networkidle', timeout=60000)
         assert migration_page.get_by_text('Migrated film').count() > 0, 'Offline project not imported'
         assert migration_page.evaluate("localStorage.getItem('vision-studio-offline-workspace-v3') !== null"), 'Migration deleted original'
@@ -50,9 +50,9 @@ try:
         # Damaged canonical storage must fail closed and offer a raw recovery export.
         recovery_context = browser.new_context(accept_downloads=True)
         recovery_page = recovery_context.new_page()
-        recovery_page.add_init_script("""() => {
+        recovery_page.add_init_script("""(() => {
             localStorage.setItem('vision-studio-next-workspace-v2', '{damaged-json');
-        }""")
+        })()""")
         recovery_page.goto(BASE, wait_until='networkidle', timeout=60000)
         assert recovery_page.get_by_role('heading', name='Workspace recovery required').is_visible(), 'Damaged workspace did not block editing'
         with recovery_page.expect_download() as download_info:
