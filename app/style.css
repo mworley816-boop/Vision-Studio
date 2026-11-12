@@ -27,3 +27,13 @@
 .cloud-editor{margin-top:28px}
 .cloud-editor button{cursor:pointer}
 @media(max-width:780px){.cloud-shell .nav{display:flex;margin-top:14px;gap:8px;flex-wrap:wrap}.cloud-shell .nav a{padding:9px 12px;font-size:12px}.cloud-shell .sidefoot{display:none}.cloud-topbar{gap:12px}.cloud-create{display:grid;grid-template-columns:1fr}.cloud-create input,.cloud-create select,.cloud-create .create{width:100%;min-width:0}.cloud-projects{grid-template-columns:1fr}.cloud-main .stats{margin-bottom:24px}}
+
+.cloud-media{margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #66455c}
+.cloud-media h2{display:flex;align-items:center;gap:10px;font-size:23px}
+.cloud-media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px;margin-top:15px}
+.cloud-media-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#211625;border:1px solid #62435c;border-radius:12px;padding:12px}
+.cloud-media-item>div{flex:1;min-width:70px}
+.cloud-media-item strong,.cloud-media-item small{display:block}
+.cloud-media-item small{color:#bfa6b8;margin-top:4px}
+.cloud-media-item .smallAction{margin:0}
+.cloud-media-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#553049;color:#efc18b}
