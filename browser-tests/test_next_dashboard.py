@@ -76,5 +76,5 @@ finally:
             context.tracing.stop(path=str(ARTIFACTS / 'trace.zip'))
         except Exception:
             pass
-    if browser is not None:
-        browser.close()
+    # Playwright's sync context manager already closes the browser and event loop.
+    # Closing it again here raises "Event loop is closed" after a successful test.
