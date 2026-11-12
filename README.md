@@ -899,3 +899,7 @@ The Next.js Chromium browser script now exercises three distinct browser profile
 - [x] Browser scenarios for offline-to-Next migration and damaged-workspace recovery authored
 - [ ] Run GitHub workflow and confirm Next.js compilation and Chromium acceptance scenarios pass
 - [ ] Live PostgreSQL, paid AI generation budget enforcement, and deployment verification
+
+## Cloudflare build-time Supabase configuration
+
+For the owner-only cloud workspace, set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in **Cloudflare Builds → Variables and secrets** before building. The `NEXT_PUBLIC_` values are embedded into the Next.js client bundle at build time; changing only Worker runtime variables will not update a previously built bundle. Use the publishable key, never a secret or service-role key. Redeploy from the Git-connected production branch after changing build variables. Owner authorization and RLS are configured separately in Supabase.
