@@ -9,3 +9,4 @@ export function sceneNeedsContinuityReview(scene:any,bible?:any):boolean;
 export function deleteScene(document:any,id:string):any;
 export function addVisualRecord(bible:any,kind:'characters'|'locations',record:any):any;
 export function deleteVisualRecord(bible:any,kind:'characters'|'locations',id:string):any;
+export function cloudStoryboardReadiness(document:any,bible?:any):{ready:boolean,issues:string[]};
