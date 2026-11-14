@@ -10,8 +10,9 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [prepared,setPrepared]=useState(false);
  const [preview,setPreview]=useState(false);
  const [previewing,setPreviewing]=useState(false);
+ const [acknowledged,setAcknowledged]=useState(false);
  async function check(){
-  setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);
+  setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);
   try{
    const query=new URLSearchParams({projectId,productionId});
    const response=await fetch('/api/generation-preflight?'+query,{cache:'no-store',credentials:'same-origin'});
@@ -58,7 +59,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    {result.ready&&<button type="button" className="smallAction" disabled={preparing||loading} onClick={prepare}>{preparing?'Preparing safely…':'Prepare generation · No charge'}</button>}
    {prepared&&<p><strong>Preparation verified · Planning only</strong></p>}
    {prepared&&<button type="button" className="smallAction" disabled={previewing||preparing} onClick={previewQueue}>{previewing?'Checking queue proposal…':'Preview generation queue · No charge'}</button>}
-   {preview&&<p role="status"><strong>Queue preview ready · Awaiting explicit approval</strong> — No job created, no provider contacted, and no payment authorized.</p>}
+   {preview&&<div><p role="status"><strong>Queue preview ready · Awaiting explicit approval</strong> — No job created, no provider contacted, and no payment authorized.</p><label style={{display:'block',marginTop:12}}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> I have reviewed the ${(result.budgetCapCents/100).toFixed(2)} maximum budget and understand this is a planning-only review.</label><p className="muted">{acknowledged?'Approval review acknowledged locally · Not submitted':'Approval review requires your confirmation. No job will be created.'}</p><p className="muted">Persistent approval and paid job submission are not enabled.</p></div>}
    <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
   </div>}
  </section>;
