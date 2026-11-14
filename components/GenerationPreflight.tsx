@@ -8,8 +8,10 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [loading,setLoading]=useState(false);
  const [preparing,setPreparing]=useState(false);
  const [prepared,setPrepared]=useState(false);
+ const [preview,setPreview]=useState(false);
+ const [previewing,setPreviewing]=useState(false);
  async function check(){
-  setLoading(true);setError('');setResult(null);setPrepared(false);
+  setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);
   try{
    const query=new URLSearchParams({projectId,productionId});
    const response=await fetch('/api/generation-preflight?'+query,{cache:'no-store',credentials:'same-origin'});
@@ -22,7 +24,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  }
  async function prepare(){
   if(!result?.ready||preparing)return;
-  setPreparing(true);setError('');setPrepared(false);
+  setPreparing(true);setError('');setPrepared(false);setPreview(false);
   try{
    const response=await fetch('/api/generation-prepare',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId,productionId,projectRevision:result.projectRevision,productionRevision:result.productionRevision,requestedMaxCents:result.budgetCapCents})});
    if(!response.ok)throw new Error('Preparation failed. Save any changes and check production readiness again.');
@@ -31,6 +33,18 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    setPrepared(true);
   }catch(e){setError(e instanceof Error?e.message:'Preparation unavailable');setResult(null)}
   finally{setPreparing(false)}
+ }
+ async function previewQueue(){
+  if(!result?.ready||!prepared||previewing)return;
+  setPreviewing(true);setError('');setPreview(false);
+  try{
+   const response=await fetch('/api/generation-queue-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId,productionId,projectRevision:result.projectRevision,productionRevision:result.productionRevision,requestedMaxCents:result.budgetCapCents})});
+   if(!response.ok)throw new Error('Queue preview unavailable. Check production readiness again.');
+   const data=await response.json();
+   if(data.status!=='awaiting_explicit_approval'||data.jobCreated!==false||data.providerCalled!==false||data.paymentAuthorized!==false||data.requiresApproval!==true)throw new Error('Unexpected queue preview result');
+   setPreview(true);
+  }catch(e){setError(e instanceof Error?e.message:'Queue preview unavailable');setPrepared(false)}
+  finally{setPreviewing(false)}
  }
  return <section className="cloud-media" aria-label="Server production readiness" style={{marginTop:16}}>
   <h2>Production readiness · Server check</h2>
@@ -43,6 +57,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <p className="muted">Saved revisions: Bible {result.projectRevision} · Storyboard {result.productionRevision} · Budget cap ${(result.budgetCapCents/100).toFixed(2)}</p>
    {result.ready&&<button type="button" className="smallAction" disabled={preparing||loading} onClick={prepare}>{preparing?'Preparing safely…':'Prepare generation · No charge'}</button>}
    {prepared&&<p><strong>Preparation verified · Planning only</strong></p>}
+   {prepared&&<button type="button" className="smallAction" disabled={previewing||preparing} onClick={previewQueue}>{previewing?'Checking queue proposal…':'Preview generation queue · No charge'}</button>}
+   {preview&&<p role="status"><strong>Queue preview ready · Awaiting explicit approval</strong> — No job created, no provider contacted, and no payment authorized.</p>}
    <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
   </div>}
  </section>;
