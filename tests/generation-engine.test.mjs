@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {defineProvider,chooseProvider,enqueueGeneration,completeGeneration,failGeneration,validateProviderQuote} from '../lib/generation-engine.mjs';
+import {defineProvider,chooseProvider,enqueueGeneration,enqueueCloudGeneration,completeGeneration,failGeneration,validateProviderQuote} from '../lib/generation-engine.mjs';
 const provider=(id,kind,max,enabled=true)=>defineProvider({id,kind,estimatedCents:max,maximumCents:max,enabled});
 const fixture=(kind='music')=>({production:{id:'v1',projectId:'p1',kind,spentCents:0,reservedCents:0,jobs:[]},plan:{id:'plan-v1',projectId:'p1',productionId:'v1',kind,status:'ready',shots:[{sceneId:'s1',status:'planned',assetIds:[]}]}});
 test('provider prices must be bounded',()=>assert.throws(()=>defineProvider({id:'a',kind:'motion',estimatedCents:100,maximumCents:50}),/Maximum/));
@@ -12,3 +12,6 @@ test('completion settles and releases unused reservation',()=>{const f=fixture()
 test('failure releases reservation',()=>{const f=fixture('episode');const q=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',700),'job1');const r=failGeneration(q.production,q.plan,q.job);assert.equal(r.production.reservedCents,0);assert.equal(r.plan.shots[0].status,'planned');});
 test('unexpected overcharge is blocked',()=>{const f=fixture();const q=enqueueGeneration(f.production,f.plan,'s1',provider('m','motion',200),'job1');assert.throws(()=>completeGeneration(q.production,q.plan,q.job,201,'asset1'),/beyond reserved/);});
 test('provider quote requires verified timestamp and USD',()=>{assert.throws(()=>validateProviderQuote({maximumCents:20,currency:'USD'}),/timestamp/);assert.equal(validateProviderQuote({maximumCents:20,currency:'USD',verifiedAt:'2026-11-05'}),true);});
+
+import {addScene,editScene,approveScene} from '../lib/visual-editor.mjs';
+test('cloud generation refuses stale references before reserving any budget',()=>{const f=fixture();let storyboard=addScene({},{description:'Xi',duration:10});const id=storyboard.scenes[0].id;const bible={characters:[{id:'xi',referenceAssetId:'asset-a'}],locations:[]};storyboard=editScene(storyboard,id,{characterIds:['xi']});storyboard=approveScene(storyboard,id,bible);const plan={...f.plan,shots:[{sceneId:id,status:'planned',assetIds:[]}]};const p=provider('m','motion',100);const changed={characters:[{id:'xi',referenceAssetId:'asset-b'}],locations:[]};assert.throws(()=>enqueueCloudGeneration(f.production,plan,id,p,'job1',{storyboard,bible:changed}),/not ready/);assert.equal(f.production.reservedCents,0);assert.throws(()=>enqueueCloudGeneration(f.production,plan,id,p,'job1',{}),/required/);const result=enqueueCloudGeneration(f.production,plan,id,p,'job1',{storyboard,bible});assert.equal(result.production.reservedCents,100);});
