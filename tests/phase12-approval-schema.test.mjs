@@ -19,3 +19,10 @@ test('Phase 12 contains no paid queue authorization',()=>{
  assert.doesNotMatch(sql,/insert into public\.studio_paid_jobs/i);
  assert.doesNotMatch(sql,/reserve_job\(/i);
 });
+
+test('Phase 12 can be rechecked without duplicate trigger or policy definitions',()=>{
+ assert.match(sql,/drop trigger if exists studio_validate_generation_approval_review_insert/i);
+ assert.match(sql,/drop policy if exists "owner reads approval reviews"/i);
+ assert.match(sql,/drop policy if exists "owner records nonspending approval review"/i);
+ assert.match(sql,/revoke all on function public\.studio_validate_generation_approval_review\(\) from public,anon,authenticated/i);
+});
