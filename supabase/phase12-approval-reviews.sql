@@ -15,6 +15,7 @@ create table if not exists public.studio_generation_approval_reviews (
 alter table public.studio_generation_approval_reviews enable row level security;
 revoke all on public.studio_generation_approval_reviews from public,anon,authenticated;
 grant select,insert on public.studio_generation_approval_reviews to authenticated;
+drop policy if exists "owner reads approval reviews" on public.studio_generation_approval_reviews;
 create policy "owner reads approval reviews" on public.studio_generation_approval_reviews
  for select to authenticated using(owner_id=(select auth.uid()) and exists(select 1 from public.studio_owners o where o.user_id=(select auth.uid())));
 -- Atomic current-revision check inside database, not only a stale browser snapshot.
@@ -27,11 +28,14 @@ begin
  select revision,budget_cents into v_story,v_budget from public.studio_productions
  where id=new.production_id and project_id=new.project_id and owner_id=new.owner_id for share;
  if v_bible is null or v_story is null or v_bible<>new.project_revision or v_story<>new.production_revision
-    or new.maximum_cost_cents>v_budget then raise exception 'Approval review stale or exceeds budget'; end if;
+    or new.maximum_cost_cents<1 or new.maximum_cost_cents>2000 or new.maximum_cost_cents>v_budget then raise exception 'Approval review stale or exceeds budget'; end if;
  return new;
 end $$;
+revoke all on function public.studio_validate_generation_approval_review() from public,anon,authenticated;
+drop trigger if exists studio_validate_generation_approval_review_insert on public.studio_generation_approval_reviews;
 create trigger studio_validate_generation_approval_review_insert before insert on public.studio_generation_approval_reviews
  for each row execute function public.studio_validate_generation_approval_review();
+drop policy if exists "owner records nonspending approval review" on public.studio_generation_approval_reviews;
 create policy "owner records nonspending approval review" on public.studio_generation_approval_reviews
  for insert to authenticated with check(owner_id=(select auth.uid()) and decision='reviewed_only'
  and exists(select 1 from public.studio_owners o where o.user_id=(select auth.uid())));
