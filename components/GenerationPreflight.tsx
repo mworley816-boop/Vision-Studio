@@ -20,6 +20,11 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [quoteMessage,setQuoteMessage]=useState('');
  const [pricingStatus,setPricingStatus]=useState('');
  const [pricingLoading,setPricingLoading]=useState(false);
+ const [planScenes,setPlanScenes]=useState('5');
+ const [planSeconds,setPlanSeconds]=useState('10');
+ const [planKind,setPlanKind]=useState<'music'|'episode'>('music');
+ const [planMessage,setPlanMessage]=useState('');
+ const [planLoading,setPlanLoading]=useState(false);
  async function check(){
   setAuthorizationMessage('');setDraftMessage('');setQuoteMessage('');
   setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);setReviewSaved(false);setReviewHistory([]);setHistoryMessage('');
@@ -137,6 +142,22 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   }catch(e){setPricingStatus('Phase 16 unavailable · '+(e instanceof Error?e.message:'Could not verify pricing')+'. Generation remains disabled.');}
   finally{setPricingLoading(false)}
  }
+ async function inspectProductionCost(){
+  setPlanMessage('');
+  if(!/^[1-9][0-9]{0,2}$/.test(planScenes)||!/^[1-9][0-9]{0,2}$/.test(planSeconds)||Number(planScenes)>500||Number(planSeconds)>30){
+   setPlanMessage('Enter 1–500 scenes and 1–30 seconds per scene.');return;
+  }
+  setPlanLoading(true);
+  try{
+   const params=new URLSearchParams({kind:planKind,scenes:planScenes,seconds:planSeconds});
+   const response=await fetch('/api/production-cost-estimate?'+params,{cache:'no-store',credentials:'same-origin'});
+   if(!response.ok)throw new Error('Cost planning endpoint unavailable');
+   const data=await response.json();
+   if(data.phase!==18||data.mode!=='planning_only'||data.status!=='blocked'||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false)throw new Error('Unexpected planning result');
+   setPlanMessage('Pricing unavailable · '+String(data.reason||'No trusted pricing')+'. No charge.');
+  }catch(e){setPlanMessage('Cost planning blocked · '+(e instanceof Error?e.message:'Verification unavailable'));}
+  finally{setPlanLoading(false)}
+ }
  async function saveReview(){
   if(!result?.ready||!preview||!acknowledged||savingReview)return;
   setSavingReview(true);setReviewSaved(false);setError('');
@@ -164,6 +185,16 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   {quoteMessage&&<p role="status">{quoteMessage}</p>}
   <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
   {pricingStatus&&<p role="status">{pricingStatus}</p>}
+  <div style={{marginTop:16}}>
+   <h3>Phase 19 · Production cost planning</h3>
+   <p className="muted">Planning only. Verified provider prices are not configured; no charges or generation.</p>
+   <label style={{display:'block'}}>Production type <select value={planKind} onChange={e=>setPlanKind(e.target.value as 'music'|'episode')}><option value="music">Music video · $5 maximum</option><option value="episode">Episode · $20 maximum</option></select></label>
+   <label style={{display:'block'}}>Number of scenes <input type="number" min="1" max="500" step="1" value={planScenes} onChange={e=>setPlanScenes(e.target.value)}/></label>
+   <label style={{display:'block'}}>Seconds per scene <input type="number" min="1" max="30" step="1" value={planSeconds} onChange={e=>setPlanSeconds(e.target.value)}/></label>
+   <p className="muted">Planned duration: {Number(planScenes)>0&&Number(planSeconds)>0&&Number.isFinite(Number(planScenes)*Number(planSeconds))?Number(planScenes)*Number(planSeconds):0} seconds · Budget cap ${planKind==='music'?'5.00':'20.00'}</p>
+   <button type="button" className="smallAction" disabled={planLoading} onClick={inspectProductionCost}>{planLoading?'Checking estimate…':'Check Phase 19 cost plan · No charge'}</button>
+   {planMessage&&<p role="status">{planMessage}</p>}
+  </div>
   {error&&<p role="alert">{error}</p>}
   {result&&<div role="status" style={{marginTop:12}}>
    <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
