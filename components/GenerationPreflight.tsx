@@ -121,7 +121,10 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    if(current.ready!==true||current.generationEnabled!==false||history.status!=='history'||history.generationEnabled!==false||!Array.isArray(history.records))throw new Error('Planning verification failed.');
    if(current.projectRevision!==result.projectRevision||current.productionRevision!==result.productionRevision||current.budgetCapCents!==result.budgetCapCents)throw new Error('Production changed. Repeat readiness and preview.');
    if(!history.records.some((r:{decision:string;project_revision:number;production_revision:number;maximum_cost_cents:number})=>r.decision==='reviewed_only'&&r.project_revision===current.projectRevision&&r.production_revision===current.productionRevision&&r.maximum_cost_cents===current.budgetCapCents))throw new Error('Matching saved review required.');
-   setQuoteMessage('Planning review verified · Provider pricing blocked: no verified provider/model quote, currency, or expiry has been supplied. 
+   setQuoteMessage('Planning review verified · Provider pricing blocked: no verified provider/model quote, currency, or expiry has been supplied. $'+(current.budgetCapCents/100).toFixed(2)+' maximum budget · No charge.');
+  }catch(e){setQuoteMessage('Blocked · '+(e instanceof Error?e.message:'Provider pricing verification unavailable'));}
+ }
+ async function saveReview(){
   if(!result?.ready||!preview||!acknowledged||savingReview)return;
   setSavingReview(true);setReviewSaved(false);setError('');
   try{
@@ -197,8 +200,4 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
   </div>}
  </section>;
-}    setQuoteMessage('Planning review verified · Provider pricing blocked: no verified provider/model quote, currency, or expiry has been supplied. $'+(current.budgetCapCents/100).toFixed(2)+' maximum budget · No charge.');
-  }catch(e){setQuoteMessage('Blocked · '+(e instanceof Error?e.message:'Provider pricing verification unavailable'));}
- }
- async function saveReview(){
-
+}
