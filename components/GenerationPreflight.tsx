@@ -197,4 +197,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
   </div>}
  </section>;
-}
+}    setQuoteMessage('Planning review verified · Provider pricing blocked: no verified provider/model quote, currency, or expiry has been supplied. $'+(current.budgetCapCents/100).toFixed(2)+' maximum budget · No charge.');
+  }catch(e){setQuoteMessage('Blocked · '+(e instanceof Error?e.message:'Provider pricing verification unavailable'));}
+ }
+ async function saveReview(){
+
