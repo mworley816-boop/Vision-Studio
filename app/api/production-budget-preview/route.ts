@@ -16,6 +16,17 @@ export async function POST(request:Request){
  }catch{return blocked('Invalid JSON');}
  const fields=['videoClipCents','clipCount','retryCount','imageAssetCents','audioCents','otherCents','spentCents','reservedCents'];
  if(fields.some(field=>!Number.isSafeInteger(input[field])||Number(input[field])<0||Number(input[field])>1000000))return blocked('All budget amounts must be nonnegative whole numbers');
- const result=inspectProductionBudget({kind:input.kind,...Object.fromEntries(fields.map(field=>[field,input[field]]))});
+ if(input.kind!=='music'&&input.kind!=='episode')return blocked('Unknown production type');
+ const result=inspectProductionBudget({
+  kind:input.kind,
+  videoClipCents:Number(input.videoClipCents),
+  clipCount:Number(input.clipCount),
+  retryCount:Number(input.retryCount),
+  imageAssetCents:Number(input.imageAssetCents),
+  audioCents:Number(input.audioCents),
+  otherCents:Number(input.otherCents),
+  spentCents:Number(input.spentCents),
+  reservedCents:Number(input.reservedCents)
+ });
  return NextResponse.json({...result,phase:25,mode:'illustrative_only',trustedProviderPricing:false},{headers});
 }
