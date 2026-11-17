@@ -18,6 +18,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [authorizationMessage,setAuthorizationMessage]=useState('');
  const [draftMessage,setDraftMessage]=useState('');
  const [quoteMessage,setQuoteMessage]=useState('');
+ const [pricingStatus,setPricingStatus]=useState('');
+ const [pricingLoading,setPricingLoading]=useState(false);
  async function check(){
   setAuthorizationMessage('');setDraftMessage('');setQuoteMessage('');
   setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);setReviewSaved(false);setReviewHistory([]);setHistoryMessage('');
@@ -124,6 +126,17 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    setQuoteMessage('Planning review verified · Provider pricing blocked: no verified provider/model quote, currency, or expiry has been supplied. $'+(current.budgetCapCents/100).toFixed(2)+' maximum budget · No charge.');
   }catch(e){setQuoteMessage('Blocked · '+(e instanceof Error?e.message:'Provider pricing verification unavailable'));}
  }
+ async function inspectPhase16Pricing(){
+  setPricingLoading(true);setPricingStatus('');
+  try{
+   const response=await fetch('/api/provider-pricing-status',{cache:'no-store',credentials:'same-origin'});
+   if(!response.ok)throw new Error('Pricing status endpoint unavailable');
+   const data=await response.json();
+   if(data.phase!==16||data.mode!=='planning_only'||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||data.status!=='blocked')throw new Error('Unexpected pricing status. Generation remains disabled.');
+   setPricingStatus('Phase 16 · Provider pricing blocked: '+String(data.reason||'No trusted provider quote configured')+'. No charge.');
+  }catch(e){setPricingStatus('Phase 16 unavailable · '+(e instanceof Error?e.message:'Could not verify pricing')+'. Generation remains disabled.');}
+  finally{setPricingLoading(false)}
+ }
  async function saveReview(){
   if(!result?.ready||!preview||!acknowledged||savingReview)return;
   setSavingReview(true);setReviewSaved(false);setError('');
@@ -149,6 +162,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   {draftMessage&&<p role="status">{draftMessage}</p>}
   <button type="button" className="smallAction" onClick={inspectProviderPricing}>Inspect Phase 15 provider pricing · No charge</button>
   {quoteMessage&&<p role="status">{quoteMessage}</p>}
+  <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
+  {pricingStatus&&<p role="status">{pricingStatus}</p>}
   {error&&<p role="alert">{error}</p>}
   {result&&<div role="status" style={{marginTop:12}}>
    <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
