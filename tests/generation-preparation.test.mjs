@@ -4,7 +4,7 @@ import {prepareCloudGeneration} from '../lib/cloud/generation-preparation.mjs';
 const projectId='11111111-1111-4111-8111-111111111111',productionId='22222222-2222-4222-8222-222222222222';
 function mock({approved=true,budget=500}={}){
  const scene={id:'scene',approved,characterIds:[],locationId:'',referenceSnapshot:{characters:[],locationId:'',locationReferenceAssetId:'',sceneReferenceAssetId:''}};
- const rows={studio_owners:{user_id:'owner'},studio_projects:{visual_bible:{characters:[],locations:[]},revision:2},studio_productions:{storyboard:{scenes:[scene]},revision:3,budget_cents:budget,kind:'music'}};
+ const rows={studio_owners:{user_id:'owner'},studio_projects:{kind:'music',visual_bible:{characters:[],locations:[]},revision:2},studio_productions:{storyboard:{scenes:[scene]},revision:3,budget_cents:budget,kind:'music'}};
  return {auth:{getUser:async()=>({data:{user:{id:'owner'}},error:null})},from(table){return {select(){return this},eq(){return this},async single(){return {data:rows[table],error:null}},async maybeSingle(){return {data:rows[table],error:null}}}}};
 }
 const args={projectId,productionId,projectRevision:2,productionRevision:3,requestedMaxCents:500};
