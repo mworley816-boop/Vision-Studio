@@ -1,5 +1,5 @@
 import {NextResponse} from 'next/server';
-import {inspectTrustedProviderQuote} from '../../../../lib/cloud/trusted-provider-quote.mjs';
+import {inspectTrustedProviderQuote} from '../../../lib/cloud/trusted-provider-quote.mjs';
 
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'no-store, max-age=0'};
