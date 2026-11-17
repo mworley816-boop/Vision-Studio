@@ -39,10 +39,10 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    const response=await fetch('/api/production-budget-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:planKind,clipCount,videoClipCents,retryCount,imageAssetCents,audioCents,otherCents,spentCents:0,reservedCents:0})});
    if(!response.ok)throw new Error('Server budget preview unavailable');
    const data=await response.json();
-   if(data.mode!=='illustrative_only'||data.trustedProviderPricing!==false||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||!['blocked','budget_checked_only'].includes(data.status))throw new Error('Unexpected budget response');
+   if(data.mode!=='illustrative_only'||data.balanceSource!=='manual_hypothetical'||data.actualAvailableBalanceVerified!==false||data.mayAuthorizeGeneration!==false||data.trustedProviderPricing!==false||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||!['blocked','budget_checked_only'].includes(data.status))throw new Error('Unexpected budget response');
    if(data.status==='blocked'){setBudgetMessage('Server blocked estimate: '+String(data.reason||'Budget validation failed')+' · No charge.');return;}
    if(!Number.isSafeInteger(data.estimatedCostCents)||!Number.isSafeInteger(data.maximumCostCents))throw new Error('Invalid server budget result');
-   setBudgetMessage('Server-checked illustrative full cost: $'+(data.estimatedCostCents/100).toFixed(2)+' / $'+(data.maximumCostCents/100).toFixed(2)+' cap · NOT verified provider pricing · No charge.');
+   setBudgetMessage('Server-checked hypothetical full cost (assumes $0 spent and reserved): $'+(data.estimatedCostCents/100).toFixed(2)+' / $'+(data.maximumCostCents/100).toFixed(2)+' cap · NOT verified provider pricing · No charge.');
   }catch(e){setBudgetMessage(e instanceof Error?e.message:'Server budget preview unavailable')}
   finally{setBudgetLoading(false)}
  }
@@ -218,7 +218,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   </div>
   <div style={{marginTop:16}}>
    <h3>Phase 24 · Full production budget preview</h3>
-   <p className="muted">Illustrative manual amounts only, not verified provider quotes. No paid generation.</p>
+   <p className="muted">Hypothetical manual amounts only. Assumes $0 spent and $0 reserved; actual available balance is NOT verified. Not a provider quote or paid authorization.</p>
    {([['clipCents','Estimated cents per clip'],['retries','Retry clips'],['assets','Image assets (cents)'],['audio','Audio (cents)'],['other','Other costs (cents)']] as const).map(([key,label])=><label key={key} style={{display:'block'}}>{label} <input type="number" min="0" step="1" value={budgetInputs[key]} onChange={e=>setBudgetInputs(old=>({...old,[key]:e.target.value}))}/></label>)}
    <button type="button" className="smallAction" disabled={budgetLoading} onClick={inspectFullBudget}>{budgetLoading?'Checking server budget…':'Preview Phase 26 full budget · No charge'}</button>
    {budgetMessage&&<p role="status">{budgetMessage}</p>}

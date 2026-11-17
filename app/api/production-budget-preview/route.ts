@@ -17,6 +17,8 @@ export async function POST(request:Request){
  const fields=['videoClipCents','clipCount','retryCount','imageAssetCents','audioCents','otherCents','spentCents','reservedCents'];
  if(fields.some(field=>!Number.isSafeInteger(input[field])||Number(input[field])<0||Number(input[field])>1000000))return blocked('All budget amounts must be nonnegative whole numbers');
  if(input.kind!=='music'&&input.kind!=='episode')return blocked('Unknown production type');
+ // The endpoint is exclusively hypothetical; clients cannot assert an actual ledger.
+ if(input.balanceSource!==undefined||input.verifiedBalance!==undefined||input.authorizePayment!==undefined)return blocked('Actual balance and payment authorization are not supported by this preview');
  const result=inspectProductionBudget({
   kind:input.kind,
   videoClipCents:Number(input.videoClipCents),
@@ -28,5 +30,5 @@ export async function POST(request:Request){
   spentCents:Number(input.spentCents),
   reservedCents:Number(input.reservedCents)
  });
- return NextResponse.json({...result,phase:25,mode:'illustrative_only',trustedProviderPricing:false},{headers});
+ return NextResponse.json({...result,phase:27,mode:'illustrative_only',balanceSource:'manual_hypothetical',actualAvailableBalanceVerified:false,mayAuthorizeGeneration:false,trustedProviderPricing:false},{headers});
 }
