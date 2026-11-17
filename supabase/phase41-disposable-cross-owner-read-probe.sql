@@ -6,7 +6,7 @@ begin read only;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'owner_a', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
-select
+select 'A' as probe,
  (select count(*) from public.studio_projects where owner_id=:'owner_b'::uuid)=0 as a_cannot_read_b_projects,
  (select count(*) from public.studio_productions where owner_id=:'owner_b'::uuid)=0 as a_cannot_read_b_productions,
  (select count(*) from public.studio_projects where owner_id=:'owner_a'::uuid)>0 as a_can_read_own_projects,
@@ -16,7 +16,7 @@ begin read only;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'owner_b', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
-select
+select 'B' as probe,
  (select count(*) from public.studio_projects where owner_id=:'owner_a'::uuid)=0 as b_cannot_read_a_projects,
  (select count(*) from public.studio_productions where owner_id=:'owner_a'::uuid)=0 as b_cannot_read_a_productions,
  (select count(*) from public.studio_projects where owner_id=:'owner_b'::uuid)>0 as b_can_read_own_projects,
