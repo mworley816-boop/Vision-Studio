@@ -9,7 +9,7 @@ from playwright.sync_api import Error as PlaywrightError
 import subprocess
 import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT = 4187
@@ -51,7 +51,7 @@ try:
         assert page.locator('#name').count() == 1, f'Preview form missing: {page.url}'
         page.locator('#name').fill('Browser test music')
         page.locator('#create button').click()
-        assert page.locator('#count').inner_text() == '1'
+        expect(page.locator('#count')).to_have_text('1', timeout=5000)
         page.get_by_role('button', name='Create production draft').click()
         page.get_by_placeholder('Describe a scene').fill('Opening sunrise shot')
         page.get_by_role('button', name='Add scene').click()
@@ -66,12 +66,12 @@ try:
         assert data['productions'][0]['scenes'][0]['approved'] is True
         page.on('dialog', lambda d: d.accept())
         page.get_by_role('button', name='Delete local draft').click()
-        assert page.locator('#count').inner_text() == '0'
+        expect(page.locator('#count')).to_have_text('0', timeout=5000)
         page.locator('#import').set_input_files({'name':'backup.json','mimeType':'application/json','buffer':json.dumps(data).encode()})
-        assert page.locator('#count').inner_text() == '1'
+        expect(page.locator('#count')).to_have_text('1', timeout=5000)
         assert page.get_by_text('Planning ready').count() == 1
         page.reload()
-        assert page.locator('#count').inner_text() == '1'
+        expect(page.locator('#count')).to_have_text('1', timeout=5000)
         assert page.get_by_text('Planning ready').count() == 1
         assert not errors, errors
         print('PASS: Chromium project creation, scene approval, JSON export/import, reload persistence, no page errors')
