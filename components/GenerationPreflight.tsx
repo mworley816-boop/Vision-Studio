@@ -13,9 +13,11 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [acknowledged,setAcknowledged]=useState(false);
  const [savingReview,setSavingReview]=useState(false);
  const [reviewSaved,setReviewSaved]=useState(false);
- const [reviewHistory,setReviewHistory]=useState<{id:string;created_at:string;maximum_cost_cents:number;project_revision:number;production_revision:number}[]>([]);
+ const [reviewHistory,setReviewHistory]=useState<{id:string;created_at:string;maximum_cost_cents:number;project_revision:number;production_revision:number;decision:string}[]>([]);
  const [historyMessage,setHistoryMessage]=useState('');
+ const [authorizationMessage,setAuthorizationMessage]=useState('');
  async function check(){
+  setAuthorizationMessage('');
   setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);setReviewSaved(false);setReviewHistory([]);setHistoryMessage('');
   try{
    const query=new URLSearchParams({projectId,productionId});
@@ -52,6 +54,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   finally{setPreviewing(false)}
  }
  async function loadHistory(){
+  setAuthorizationMessage('');
   setHistoryMessage('');
   try{
    const query=new URLSearchParams({projectId,productionId});
@@ -62,6 +65,25 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    setReviewHistory(data.records);
    if(data.records.length===0)setHistoryMessage('No saved approval reviews yet.');
   }catch(e){setHistoryMessage(e instanceof Error?e.message:'Approval history unavailable')}
+ }
+ async function checkAuthorizationReadiness(){
+  setAuthorizationMessage('');
+  if(!result?.ready||!preview){setAuthorizationMessage('Blocked · Run production readiness, preparation, and queue preview first.');return;}
+  try{
+   const params=new URLSearchParams({projectId,productionId});
+   const [preflightResponse,historyResponse]=await Promise.all([
+    fetch('/api/generation-preflight?'+params,{cache:'no-store',credentials:'same-origin'}),
+    fetch('/api/generation-approval-reviews?'+params,{cache:'no-store',credentials:'same-origin'})
+   ]);
+   if(!preflightResponse.ok||!historyResponse.ok)throw new Error('Could not verify current production and saved review.');
+   const current=await preflightResponse.json();
+   const history=await historyResponse.json();
+   if(current.ready!==true||current.generationEnabled!==false||history.status!=='history'||history.generationEnabled!==false||!Array.isArray(history.records))throw new Error('Verification failed closed.');
+   if(current.projectRevision!==result.projectRevision||current.productionRevision!==result.productionRevision||current.budgetCapCents!==result.budgetCapCents)throw new Error('Production changed. Run readiness and preview again.');
+   const matching=history.records.some((r:{decision:string;project_revision:number;production_revision:number;maximum_cost_cents:number})=>r.decision==='reviewed_only'&&r.project_revision===current.projectRevision&&r.production_revision===current.productionRevision&&r.maximum_cost_cents===current.budgetCapCents);
+   if(!matching)throw new Error('No saved acknowledgment matches the current production and budget.');
+   setAuthorizationMessage('Planning checks passed · Saved review matches current revisions and budget. This is NOT authorization to generate or spend.');
+  }catch(e){setAuthorizationMessage('Blocked · '+(e instanceof Error?e.message:'Verification unavailable'));}
  }
  async function saveReview(){
   if(!result?.ready||!preview||!acknowledged||savingReview)return;
@@ -82,6 +104,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   <button type="button" className="smallAction" disabled={loading} onClick={check}>{loading?'Checking saved production…':'Check production readiness'}</button>
   <button type="button" className="smallAction" onClick={loadHistory} disabled={savingReview}>View saved review history</button>
   {historyMessage&&<p className="muted" role="status">{historyMessage}</p>}{reviewHistory.length>0&&<div><h3>Saved approval reviews</h3><ul>{reviewHistory.map(r=><li key={r.id}>{new Date(r.created_at).toLocaleString()} · Maximum ${(r.maximum_cost_cents/100).toFixed(2)} · Bible {r.project_revision} · Storyboard {r.production_revision} · Review only</li>)}</ul></div>}
+  <button type="button" className="smallAction" onClick={checkAuthorizationReadiness}>Check Phase 13 planning readiness · No charge</button>
+  {authorizationMessage&&<p role="status">{authorizationMessage}</p>}
   {error&&<p role="alert">{error}</p>}
   {result&&<div role="status" style={{marginTop:12}}>
    <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
