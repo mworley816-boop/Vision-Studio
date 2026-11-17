@@ -25,6 +25,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [planKind,setPlanKind]=useState<'music'|'episode'>('music');
  const [planMessage,setPlanMessage]=useState('');
  const [planLoading,setPlanLoading]=useState(false);
+ const [budgetInputs,setBudgetInputs]=useState({clipCents:'50',retries:'1',assets:'50',audio:'60',other:'40'});
+ const [budgetMessage,setBudgetMessage]=useState('');
  async function check(){
   setAuthorizationMessage('');setDraftMessage('');setQuoteMessage('');
   setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);setReviewSaved(false);setReviewHistory([]);setHistoryMessage('');
@@ -194,6 +196,46 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <p className="muted">Planned duration: {Number(planScenes)>0&&Number(planSeconds)>0&&Number.isFinite(Number(planScenes)*Number(planSeconds))?Number(planScenes)*Number(planSeconds):0} seconds · Budget cap ${planKind==='music'?'5.00':'20.00'}</p>
    <button type="button" className="smallAction" disabled={planLoading} onClick={inspectProductionCost}>{planLoading?'Checking estimate…':'Check Phase 19 cost plan · No charge'}</button>
    {planMessage&&<p role="status">{planMessage}</p>}
+  </div>
+  <div style={{marginTop:16}}>
+   <h3>Phase 24 · Full production budget preview</h3>
+   <p className="muted">Illustrative manual amounts only, not verified provider quotes. No paid generation.</p>
+   {([['clipCents','Estimated cents per clip'],['retries','Retry clips'],['assets','Image assets (cents)'],['audio','Audio (cents)'],['other','Other costs (cents)']] as const).map(([key,label])=><label key={key} style={{display:'block'}}>{label} <input type="number" min="0" step="1" value={budgetInputs[key]} onChange={e=>setBudgetInputs(old=>({...old,[key]:e.target.value}))}/></label>)}
+   <button type="button" className="smallAction" onClick={()=>{
+    const values=[planScenes,budgetInputs.clipCents,budgetInputs.retries,budgetInputs.assets,budgetInputs.audio,budgetInputs.other];
+    if(values.some(x=>!/^\\d{1,6}$/.test(x))||Number(planScenes)<1||Number(planScenes)>500||Number(budgetInputs.retries)>500){setBudgetMessage('Enter valid nonnegative whole-number estimates and 1–500 scenes.');return;}
+    const [scenes,clip,retries,assets,audio,other]=values.map(Number);
+    const total=clip*(scenes+retries)+assets+audio+other;
+    const cap=planKind==='music'?500:2000;
+    setBudgetMessage('Illustrative full cost: 
+  {result&&<div role="status" style={{marginTop:12}}>
+   <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
+   {result.issues.length>0&&<ul>{result.issues.map((issue,i)=><li key={i}>{issue}</li>)}</ul>}
+   <p className="muted">Saved revisions: Bible {result.projectRevision} · Storyboard {result.productionRevision} · Budget cap ${(result.budgetCapCents/100).toFixed(2)}</p>
+   {result.ready&&<button type="button" className="smallAction" disabled={preparing||loading} onClick={prepare}>{preparing?'Preparing safely…':'Prepare generation · No charge'}</button>}
+   {prepared&&<p><strong>Preparation verified · Planning only</strong></p>}
+   {prepared&&<button type="button" className="smallAction" disabled={previewing||preparing} onClick={previewQueue}>{previewing?'Checking queue proposal…':'Preview generation queue · No charge'}</button>}
+   {preview&&<div><p role="status"><strong>Queue preview ready · Awaiting explicit approval</strong> — No job created, no provider contacted, and no payment authorized.</p><label style={{display:'block',marginTop:12}}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> I have reviewed the ${(result.budgetCapCents/100).toFixed(2)} maximum budget and understand this is a planning-only review.</label><p className="muted">{acknowledged?'Approval review acknowledged locally · Not submitted':'Approval review requires your confirmation. No job will be created.'}</p><button type="button" className="smallAction" disabled={!acknowledged||savingReview||reviewSaved} onClick={saveReview}>{savingReview?'Saving review…':reviewSaved?'Review saved · No charge':'Save acknowledgment · No charge'}</button>{reviewSaved&&<p role="status"><strong>Review recorded · Planning only.</strong> No paid job authorized.</p>}<p className="muted">This records acknowledgment only. Paid job submission and AI generation remain disabled.</p></div>}
+   <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
+  </div>}
+ </section>;
+}
++(total/100).toFixed(2)+' / 
+  {result&&<div role="status" style={{marginTop:12}}>
+   <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
+   {result.issues.length>0&&<ul>{result.issues.map((issue,i)=><li key={i}>{issue}</li>)}</ul>}
+   <p className="muted">Saved revisions: Bible {result.projectRevision} · Storyboard {result.productionRevision} · Budget cap ${(result.budgetCapCents/100).toFixed(2)}</p>
+   {result.ready&&<button type="button" className="smallAction" disabled={preparing||loading} onClick={prepare}>{preparing?'Preparing safely…':'Prepare generation · No charge'}</button>}
+   {prepared&&<p><strong>Preparation verified · Planning only</strong></p>}
+   {prepared&&<button type="button" className="smallAction" disabled={previewing||preparing} onClick={previewQueue}>{previewing?'Checking queue proposal…':'Preview generation queue · No charge'}</button>}
+   {preview&&<div><p role="status"><strong>Queue preview ready · Awaiting explicit approval</strong> — No job created, no provider contacted, and no payment authorized.</p><label style={{display:'block',marginTop:12}}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> I have reviewed the ${(result.budgetCapCents/100).toFixed(2)} maximum budget and understand this is a planning-only review.</label><p className="muted">{acknowledged?'Approval review acknowledged locally · Not submitted':'Approval review requires your confirmation. No job will be created.'}</p><button type="button" className="smallAction" disabled={!acknowledged||savingReview||reviewSaved} onClick={saveReview}>{savingReview?'Saving review…':reviewSaved?'Review saved · No charge':'Save acknowledgment · No charge'}</button>{reviewSaved&&<p role="status"><strong>Review recorded · Planning only.</strong> No paid job authorized.</p>}<p className="muted">This records acknowledgment only. Paid job submission and AI generation remain disabled.</p></div>}
+   <p className="muted">AI generation remains disabled. This check does not create jobs, reserve funds, or incur charges.</p>
+  </div>}
+ </section>;
+}
++(cap/100).toFixed(2)+' cap · '+(total>cap?'Over budget':'Within illustrative cap')+' · NOT verified provider pricing · No charge.');
+   }}>Preview Phase 24 full budget · No charge</button>
+   {budgetMessage&&<p role="status">{budgetMessage}</p>}
   </div>
   {error&&<p role="alert">{error}</p>}
   {result&&<div role="status" style={{marginTop:12}}>
