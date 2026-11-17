@@ -25,6 +25,8 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [planKind,setPlanKind]=useState<'music'|'episode'>('music');
  const [planMessage,setPlanMessage]=useState('');
  const [planLoading,setPlanLoading]=useState(false);
+ const [budgetInputs,setBudgetInputs]=useState({clipCents:'50',retries:'1',assets:'50',audio:'60',other:'40'});
+ const [budgetMessage,setBudgetMessage]=useState('');
  async function check(){
   setAuthorizationMessage('');setDraftMessage('');setQuoteMessage('');
   setLoading(true);setError('');setResult(null);setPrepared(false);setPreview(false);setAcknowledged(false);setReviewSaved(false);setReviewHistory([]);setHistoryMessage('');
@@ -195,6 +197,20 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <button type="button" className="smallAction" disabled={planLoading} onClick={inspectProductionCost}>{planLoading?'Checking estimate…':'Check Phase 19 cost plan · No charge'}</button>
    {planMessage&&<p role="status">{planMessage}</p>}
   </div>
+  <div style={{marginTop:16}}>
+   <h3>Phase 24 · Full production budget preview</h3>
+   <p className="muted">Illustrative manual amounts only, not verified provider quotes. No paid generation.</p>
+   {([['clipCents','Estimated cents per clip'],['retries','Retry clips'],['assets','Image assets (cents)'],['audio','Audio (cents)'],['other','Other costs (cents)']] as const).map(([key,label])=><label key={key} style={{display:'block'}}>{label} <input type="number" min="0" step="1" value={budgetInputs[key]} onChange={e=>setBudgetInputs(old=>({...old,[key]:e.target.value}))}/></label>)}
+   <button type="button" className="smallAction" onClick={()=>{
+    const values=[planScenes,budgetInputs.clipCents,budgetInputs.retries,budgetInputs.assets,budgetInputs.audio,budgetInputs.other];
+    if(values.some(x=>!/^\d{1,6}$/.test(x))||Number(planScenes)<1||Number(planScenes)>500||Number(budgetInputs.retries)>500){setBudgetMessage('Enter valid nonnegative whole-number estimates and 1–500 scenes.');return;}
+    const [scenes,clip,retries,assets,audio,other]=values.map(Number);
+    const total=clip*(scenes+retries)+assets+audio+other;
+    const cap=planKind==='music'?500:2000;
+    setBudgetMessage('Illustrative full cost: $'+(total/100).toFixed(2)+' / $'+(cap/100).toFixed(2)+' cap · '+(total>cap?'Over budget':'Within illustrative cap')+' · NOT verified provider pricing · No charge.');
+    }}>Preview Phase 24 full budget · No charge</button>
+    {budgetMessage&&<p role="status">{budgetMessage}</p>}
+   </div>
   {error&&<p role="alert">{error}</p>}
   {result&&<div role="status" style={{marginTop:12}}>
    <strong>{result.ready?'Ready for future generation setup':'Not ready for generation'}</strong>
