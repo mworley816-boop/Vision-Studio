@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {sceneShotPlan} from '../lib/scene-shot-plan.mjs';import {readFileSync} from 'node:fs';
+const doc={scenes:[{id:'s1',duration:15,description:'Xi dances',characterIds:['xi']},{id:'s2',duration:5,description:'Xi smiles',characterIds:['xi']}]};
+const bible={characters:[{id:'xi',name:'Xi',description:'Curly hair',wardrobe:'Purple jacket'}]};
+test('shot durations sum to exact scene duration',()=>{for(const id of ['s1','s2']){const plan=sceneShotPlan(doc,id,bible);assert.equal(plan.shots.reduce((n,s)=>n+s.duration,0),plan.duration)}});
+test('long scenes have multiple suggested framings and inherit visual identity',()=>{const p=sceneShotPlan(doc,'s1',bible);assert.equal(p.shots.length,3);assert.match(p.text,/Curly hair/);assert.match(p.text,/Purple jacket/);assert.match(p.text,/Camera movement: To be chosen/);assert.match(p.text,/no provider quote, video, or payment/);});
+test('missing scene rejected and original approvals unchanged',()=>{assert.throws(()=>sceneShotPlan(doc,'missing',bible),/Scene not found/);sceneShotPlan(doc,'s1',bible);assert.equal(doc.scenes[0].approved,undefined)});
+test('shot plans are exposed as read-only UI',()=>{const src=readFileSync(new URL('../components/VisualEditor.tsx',import.meta.url),'utf8');assert.match(src,/Scene shot plans · No charge/);assert.match(src,/readOnly aria-label/);});
