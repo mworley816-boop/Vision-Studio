@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {productionBlockerSummary} from '../lib/production-blocker-summary.mjs';import {readFileSync} from 'node:fs';
+const doc={scenes:[{id:'one',description:'Dance',duration:10,approved:false,characterIds:['xi']},{id:'two',description:'Smile',duration:10,approved:false,characterIds:['xi']}]};
+const bible={characters:[{id:'xi',name:'Xi',description:'Curly hair',wardrobe:'Purple jacket'}]};
+test('repeated missing character references group across scenes',()=>{const report=productionBlockerSummary(doc,bible,[]);const blocker=report.blockers.find(b=>b.issue==='Character: reference image missing');assert.deepEqual(blocker.scenes,[1,2]);});
+test('scene approval blockers retain affected scene numbers',()=>{const report=productionBlockerSummary(doc,bible,[]);assert.deepEqual(report.blockers.find(b=>b.issue==='Scene approval required').scenes,[1,2]);});
+test('summary does not mutate document or authorize generation',()=>{const before=JSON.stringify(doc);const report=productionBlockerSummary(doc,bible,[]);assert.equal(JSON.stringify(doc),before);assert.equal(report.generationAuthorized,false);assert.equal(report.providerPricingVerified,false);});
+test('UI displays summary and manual approval notice',()=>{const source=readFileSync(new URL('../components/VisualEditor.tsx',import.meta.url),'utf8');assert.match(source,/Production blocker summary · No charge/);assert.match(source,/scene approvals remain manual/);});
