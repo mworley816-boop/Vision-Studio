@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 const workflow = readFileSync(new URL('../.github/workflows/verify-application.yml', import.meta.url), 'utf8');
 test('application verification workflow can be dispatched manually', () => {
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /runs-on: ubuntu-latest/);
+  assert.match(workflow, /runs-on: ubuntu-24\.04/);
+  assert.equal((workflow.match(/runs-on: ubuntu-24\.04/g)||[]).length,3);
 });
 test('workflow builds the real Next.js app after installing dependencies', () => {
   assert.match(workflow, /npm install --no-audit --no-fund/);
