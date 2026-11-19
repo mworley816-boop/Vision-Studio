@@ -20,6 +20,21 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
  const [quoteMessage,setQuoteMessage]=useState('');
  const [pricingStatus,setPricingStatus]=useState('');
  const [pricingLoading,setPricingLoading]=useState(false);
+ const [evidence,setEvidence]=useState({providerId:'',modelId:'',sourceUrl:'',unitCostCents:'',validUntil:''});
+ const [evidenceMessage,setEvidenceMessage]=useState('');
+ const [evidenceLoading,setEvidenceLoading]=useState(false);
+ async function inspectEvidence(){
+  setEvidenceMessage('');setEvidenceLoading(true);
+  try{
+   const response=await fetch('/api/provider-evidence-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(evidence)});
+   if(!response.ok)throw new Error('Evidence preview endpoint unavailable');
+   const data=await response.json();
+   if(data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||data.trustedProviderPricing!==false)throw new Error('Unexpected safety response');
+   setEvidenceMessage(data.status==='unverified_evidence_preview'?'Fields structurally valid only. Price and source are NOT independently verified. Generation blocked.':('Blocked · '+String(data.reason||'Invalid evidence')+'. No charge.'));
+  }catch(e){setEvidenceMessage('Blocked · '+(e instanceof Error?e.message:'Preview unavailable'))}
+  finally{setEvidenceLoading(false)}
+ }
+
  const [planScenes,setPlanScenes]=useState('5');
  const [planSeconds,setPlanSeconds]=useState('10');
  const [planKind,setPlanKind]=useState<'music'|'episode'>('music');
@@ -205,6 +220,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   <button type="button" className="smallAction" onClick={inspectProviderPricing}>Inspect Phase 15 provider pricing · No charge</button>
   {quoteMessage&&<p role="status">{quoteMessage}</p>}
   <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Provider setup requirements · No charge</summary><p className="muted">These are the remaining prerequisites for evaluating real generation pricing. This panel does not validate a provider or enable generation.</p><ol><li>Choose a video-generation provider and exact model that supports the planned clips.</li><li>Configure provider credentials privately on the server. Never paste API keys into the storyboard or GitHub issues.</li><li>Obtain a trustworthy, current price quote with currency, units, provider/model identity and expiration.</li><li>Calculate total expected clip, retry, image, audio and other costs against the saved $5 music-video or $20 episode hard cap.</li><li>Verify quote and credentials server-side, then review a separate explicit approval before any paid job can be submitted.</li></ol><p className="muted">Current status: pricing and provider execution are blocked. A planning acknowledgment is not spending authorization.</p></details>
+  <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Preview provider pricing evidence · No charge</summary><p className="muted">Manually entered fields are checked for format only. No price is verified, saved as trusted, or used for generation.</p>{([['providerId','Provider ID (for example, runway)'],['modelId','Model ID'],['sourceUrl','Official HTTPS pricing URL'],['unitCostCents','USD cents per output second (whole number)'],['validUntil','Evidence expiration (ISO date/time)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label}<input style={{display:'block',width:'100%',maxWidth:480}} type="text" value={evidence[key]} onChange={e=>setEvidence(old=>({...old,[key]:e.target.value}))}/></label>)}<button type="button" className="smallAction" disabled={evidenceLoading} onClick={inspectEvidence}>{evidenceLoading?'Validating fields…':'Preview evidence format · No charge'}</button>{evidenceMessage&&<p role="status">{evidenceMessage}</p>}<p className="muted">Never enter API keys here. This cannot verify source authenticity, billing rules or real-world costs.</p></details>
   <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
   {pricingStatus&&<p role="status">{pricingStatus}</p>}
   <div style={{marginTop:16}}>
