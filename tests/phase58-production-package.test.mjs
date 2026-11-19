@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {productionPackage} from '../lib/production-package.mjs';import {readFileSync} from 'node:fs';
+const doc={scenes:[{id:'one',duration:10,description:'Xi dances',characterIds:['xi']},{id:'two',duration:5,description:'Xi smiles',characterIds:['xi']}]};
+const bible={characters:[{id:'xi',name:'Xi',description:'Curly hair',wardrobe:'Purple jacket'}]};
+test('export includes all scenes and total planned duration',()=>{const result=productionPackage(doc,bible);assert.match(result,/Scenes: 2/);assert.match(result,/15 seconds/);assert.match(result,/Xi dances/);assert.match(result,/Xi smiles/);});
+test('export includes character identity and shot breakdowns',()=>{const result=productionPackage(doc,bible);assert.match(result,/Curly hair/);assert.match(result,/Purple jacket/);assert.match(result,/SHOT PLAN · SCENE 2/);});
+test('export does not mutate approvals and labels planning only',()=>{const original=JSON.stringify(doc);const result=productionPackage(doc,bible);assert.equal(JSON.stringify(doc),original);assert.match(result,/No generation or payment authorized/);});
+test('UI exposes local text download without backend submission',()=>{const src=readFileSync(new URL('../components/VisualEditor.tsx',import.meta.url),'utf8');assert.match(src,/Production package export · No charge/);assert.match(src,/vision-studio-production-plan.txt/);assert.match(src,/URL.createObjectURL/);});
