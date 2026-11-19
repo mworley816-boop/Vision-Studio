@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {sceneContinuityBrief} from '../lib/scene-continuity-brief.mjs';import {readFileSync} from 'node:fs';
+const doc={scenes:[{id:'s1',duration:15,description:'Xi dances',characterIds:['xi'],locationId:'stage'}]};
+const bible={characters:[{id:'xi',name:'Xi',description:'Curly hair',wardrobe:'Purple jacket',referenceAssetId:'ref1'}],locations:[{id:'stage',name:'Stage',description:'Gold lights'}]};
+test('brief inherits current character appearance and wardrobe',()=>{const text=sceneContinuityBrief(doc,'s1',bible);assert.match(text,/Curly hair/);assert.match(text,/Purple jacket/);assert.match(text,/Stage/);assert.match(text,/ref1/);});
+test('brief updates when Visual Bible changes without editing storyboard',()=>{const updated={...bible,characters:[{...bible.characters[0],wardrobe:'Gold dress'}]};assert.match(sceneContinuityBrief(doc,'s1',updated),/Gold dress/);assert.equal(doc.scenes[0].approved,undefined);});
+test('missing character details clearly marked and unknown scenes rejected',()=>{const text=sceneContinuityBrief(doc,'s1',{characters:[{id:'xi',name:'Xi'}],locations:[]});assert.match(text,/review required/);assert.throws(()=>sceneContinuityBrief(doc,'no',bible),/Scene not found/);});
+test('UI is read-only and planning-only',()=>{const source=readFileSync(new URL('../components/VisualEditor.tsx',import.meta.url),'utf8');assert.match(source,/Reusable character continuity briefs · No charge/);assert.match(source,/readOnly aria-label/);});
