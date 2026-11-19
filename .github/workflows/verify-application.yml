@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   application-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: '1'
@@ -47,7 +47,7 @@ jobs:
           path: vision-build.log
           if-no-files-found: ignore
   browser-preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
             preview-server.log
           if-no-files-found: ignore
   next-dashboard-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       NEXT_TELEMETRY_DISABLED: '1'
