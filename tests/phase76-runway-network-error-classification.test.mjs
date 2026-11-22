@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {classifyRunwayNetworkError,probeRunwayConnection} from '../lib/cloud/runway-connection.mjs';
+for(const [code,expected] of [['ENOTFOUND','dns_failed'],['EAI_AGAIN','dns_failed'],['ECONNRESET','connection_failed'],['UND_ERR_CONNECT_TIMEOUT','connection_failed'],['CERT_HAS_EXPIRED','tls_failed'],['UNKNOWN_CODE','network_unavailable']])test('classify '+code,()=>assert.equal(classifyRunwayNetworkError({cause:{code}}),expected));
+test('aborted takes priority',()=>assert.equal(classifyRunwayNetworkError({cause:{code:'ENOTFOUND'}},{aborted:true}),'timed_out'));
+test('secret-bearing error messages never appear',async()=>{const key='key_12345678901234567890';const r=await probeRunwayConnection({env:{RUNWAYML_API_SECRET:key},fetchImpl:async()=>{const e=new Error(key);e.cause={code:'ENOTFOUND',secret:key};throw e}});assert.equal(r.status,'dns_failed');assert.ok(!JSON.stringify(r).includes(key));});
