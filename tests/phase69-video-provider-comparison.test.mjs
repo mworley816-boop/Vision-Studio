@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {compareVideoResearch} from '../lib/cloud/video-provider-comparison.mjs';
+test('full 180 second generation exceeds five dollar cap across published research options',()=>{const r=compareVideoResearch({videoSeconds:180});assert.equal(r.capCents,500);assert.ok(r.options.every(x=>!x.withinCap));assert.equal(r.options.find(x=>x.model.includes('360p')).fullMotionCents,612);});
+test('hybrid planning counts non-generated seconds',()=>{const r=compareVideoResearch({videoSeconds:50,otherCostCents:100});assert.equal(r.stillOrEditedSeconds,130);assert.equal(r.options.find(x=>x.model.includes('360p')).totalEstimatedCents,270);});
+test('all plans remain offline and unauthorized',()=>{const r=compareVideoResearch();for(const key of ['trustedProviderPricing','generationEnabled','providerCalled','jobCreated','paymentAuthorized'])assert.equal(r[key],false);});
+test('rejects invalid durations and budgets',()=>{for(const arg of [{videoSeconds:181},{videoSeconds:-1},{otherCostCents:501},{totalSeconds:0},{kind:'unknown'}])assert.throws(()=>compareVideoResearch(arg));});
+test('reserves other costs before computing maximum video duration',()=>{const r=compareVideoResearch({otherCostCents:400});assert.equal(r.options.find(x=>x.model.includes('360p')).maxVideoSeconds,29);});
