@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {previewProviderEvidence} from '../lib/cloud/provider-evidence-preview.mjs';
+const now=Date.parse('2026-11-20T12:00:00Z');
+const base={providerId:'runway',modelId:'gen-4-5',sourceUrl:'https://dev.runwayml.com/pricing',unitCostCents:'5',validUntil:'2026-12-01T00:00:00Z'};
+test('valid evidence is still untrusted and no-charge',()=>{const r=previewProviderEvidence(base,now);assert.equal(r.status,'unverified_evidence_preview');for(const key of ['trustedProviderPricing','generationEnabled','providerCalled','jobCreated','paymentAuthorized'])assert.equal(r[key],false);});
+for(const rate of ['', '0', '0.5', '1e3', '-5', ' 5.0 ', 'Infinity', '999999999999'])test('rejects ambiguous rate '+JSON.stringify(rate),()=>assert.equal(previewProviderEvidence({...base,unitCostCents:rate},now).status,'blocked'));
+for(const expiry of ['2026-12-01','2026-12-01T00:00:00','not-a-date','2026-11-01T00:00:00Z'])test('rejects ambiguous or expired date '+expiry,()=>assert.equal(previewProviderEvidence({...base,validUntil:expiry},now).status,'blocked'));
+for(const sourceUrl of ['http://provider.com/pricing','https://localhost/pricing','https://127.0.0.1/pricing','https://[::1]/pricing','https://provider.example/pricing','https://user:pass@provider.com/pricing','https://provider.com:444/pricing'])test('rejects unsafe source '+sourceUrl,()=>assert.equal(previewProviderEvidence({...base,sourceUrl},now).status,'blocked'));
+test('rejects wrong input types',()=>{assert.equal(previewProviderEvidence({...base,unitCostCents:5},now).status,'blocked');assert.equal(previewProviderEvidence(null,now).status,'blocked');});
