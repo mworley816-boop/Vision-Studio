@@ -32,7 +32,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    if(!response.ok)throw new Error('Owner access or connection check unavailable');
    const result=await response.json();
    if(result.generationEnabled!==false||result.providerCalled!==false||result.jobCreated!==false||result.paymentAuthorized!==false)throw new Error('Unexpected connection safety response');
-   const statuses:{[key:string]:string}={not_configured:'Runway API secret is not configured on the server.',connected_read_only:'Runway credentials accepted. Pricing and generation remain blocked.',authentication_rejected:'Runway rejected the API credentials.',unverified:'Runway connection could not be verified.',unavailable:'Runway connection unavailable.'};
+   const statuses:{[key:string]:string}={not_configured:'Runway API secret is not configured on the server.',connected_read_only:'Runway credentials accepted. Pricing and generation remain blocked.',authentication_rejected:'Runway rejected the API credentials.',unverified:'Runway returned an unexpected response.',unavailable:'Runway connection unavailable.',timed_out:'Runway connection timed out after 10 seconds.',network_unavailable:'Runway network request failed before an HTTP response.',request_rejected:'Runway rejected the read-only request (HTTP 400).',endpoint_not_found:'Runway organization endpoint not found (HTTP 404).',rate_limited:'Runway rate limit reached (HTTP 429).',provider_error:'Runway service returned an HTTP 5xx error.'};
    setRunwayConnectionMessage(statuses[result.status]||'Connection could not be verified.');
   }catch(e){setRunwayConnectionMessage(e instanceof Error?e.message:'Connection check unavailable');}
   finally{setRunwayConnectionLoading(false);}
