@@ -279,9 +279,10 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    const response=await fetch('/api/provider-pricing-status',{cache:'no-store',credentials:'same-origin'});
    if(!response.ok)throw new Error('Pricing status endpoint unavailable');
    const data=await response.json();
-   if(data.phase!==16||data.mode!=='planning_only'||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||data.status!=='blocked')throw new Error('Unexpected pricing status. Generation remains disabled.');
-   setPricingStatus('Phase 16 · Provider pricing blocked: '+String(data.reason||'No trusted provider quote configured')+'. No charge.');
-  }catch(e){setPricingStatus('Phase 16 unavailable · '+(e instanceof Error?e.message:'Could not verify pricing')+'. Generation remains disabled.');}
+   if(data.phase!==95||data.mode!=='planning_only'||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false||data.status!=='blocked')throw new Error('Unexpected pricing status. Generation remains disabled.');
+   if(data.readiness?.pricingCatalog!=='missing'||data.readiness?.verifiedQuote!=='missing'||data.readiness?.providerCredentials!=='not_checked'||data.readiness?.generationAuthorization!=='not_granted'||!Array.isArray(data.nextActions))throw new Error('Unexpected pricing readiness details');
+   setPricingStatus('Phase 95 · Provider pricing blocked: '+String(data.reason||'No trusted provider quote configured')+'. Next: '+data.nextActions.map((item:unknown)=>String(item)).join('; ')+'. No charge.');
+  }catch(e){setPricingStatus('Phase 95 unavailable · '+(e instanceof Error?e.message:'Could not verify pricing')+'. Generation remains disabled.');}
   finally{setPricingLoading(false)}
  }
  async function inspectProductionCost(){
@@ -364,7 +365,7 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <p className="muted">No provider call, job, reservation, or payment. Rates and other costs require fresh verification.</p>
   </details>
   <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Preview provider pricing evidence · No charge</summary><p className="muted">Manually entered fields are checked for format only. No price is verified, saved as trusted, or used for generation.</p>{([['providerId','Provider ID (for example, runway)'],['modelId','Model ID'],['sourceUrl','Official HTTPS pricing URL'],['unitCostCents','USD cents per output second (whole number)'],['validUntil','Evidence expiration (ISO date/time)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label}<input style={{display:'block',width:'100%',maxWidth:480}} type="text" value={evidence[key]} onChange={e=>setEvidence(old=>({...old,[key]:e.target.value}))}/></label>)}<button type="button" className="smallAction" disabled={evidenceLoading} onClick={inspectEvidence}>{evidenceLoading?'Validating fields…':'Preview evidence format · No charge'}</button>{evidenceMessage&&<p role="status">{evidenceMessage}</p>}<p className="muted">Never enter API keys here. This cannot verify source authenticity, billing rules or real-world costs.</p></details>
-  <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
+  <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 95 provider readiness · No charge'}</button>
   {pricingStatus&&<p role="status">{pricingStatus}</p>}
   <div style={{marginTop:16}}>
    <h3>Phase 19 · Production cost planning</h3>
