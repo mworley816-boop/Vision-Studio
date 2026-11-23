@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {previewRunwayVideoBudget} from '../lib/cloud/runway-budget-preview.mjs';
+const route=readFileSync(new URL('../app/api/runway-budget-preview/route.ts',import.meta.url),'utf8');
+test('budget preview endpoint requires owner and same origin',()=>{assert.match(route,/requireStudioOwner\(client\)/);assert.match(route,/origin!==new URL\(request.url\).origin/);assert.match(route,/private, no-store/);});
+test('endpoint does not call Runway or authorize payment',()=>{assert.doesNotMatch(route,/fetch\('https:\/\/api.dev.runwayml.com/);assert.match(route,/previewRunwayVideoBudget\(input\)/);const r=previewRunwayVideoBudget({kind:'music',seconds:20,usdCentsPerSecond:10});assert.equal(r.estimatedCents,200);assert.equal(r.paymentAuthorized,false);assert.equal(r.trustedProviderPricing,false);});
+test('quote over $5 music cap remains non-authorizing',()=>{const r=previewRunwayVideoBudget({kind:'music',seconds:51,usdCentsPerSecond:10});assert.equal(r.withinCap,false);assert.equal(r.generationEnabled,false);});
