@@ -63,6 +63,29 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   }catch(e){setRunwayModelMessage(e instanceof Error?e.message:'Model reference unavailable');}
   finally{setRunwayModelLoading(false);}
  }
+ const [batchFields,setBatchFields]=useState({sceneCount:'5',secondsPerScene:'5',retryClips:'1',assetCents:'0',audioCents:'0',otherCents:'0'});
+ const [batchMessage,setBatchMessage]=useState('');
+ const [batchLoading,setBatchLoading]=useState(false);
+ async function inspectBatchBudget(){
+  if(batchLoading)return;
+  setBatchMessage('');
+  const keys=['sceneCount','secondsPerScene','retryClips','assetCents','audioCents','otherCents'] as const;
+  const ledger=['spentCents','reservedCents'] as const;
+  if(keys.some(k=>!/^[0-9]{1,7}$/.test(batchFields[k]))||ledger.some(k=>!/^[0-9]{1,7}$/.test(runwayQuote[k]))){setBatchMessage('Use nonnegative whole numbers only.');return;}
+  setBatchLoading(true);
+  try{
+   const values=Object.fromEntries(keys.map(k=>[k,Number(batchFields[k])]));
+   const amounts=Object.fromEntries(ledger.map(k=>[k,Number(runwayQuote[k])]));
+   const response=await fetch('/api/runway-scene-batch-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:runwayQuote.kind,modelKey:runwayModel,...values,...amounts})});
+   if(!response.ok)throw new Error('Owner-only batch preview unavailable');
+   const data=await response.json();
+   if(data.trustedProviderPricing!==false||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false)throw new Error('Unexpected safety response');
+   if(data.status==='blocked'){setBatchMessage('Blocked · '+String(data.reason||'Invalid inputs'));return;}
+   if(data.status!=='reference_batch_only'||!Number.isSafeInteger(data.estimatedCents)||!Number.isSafeInteger(data.remainingCents)||typeof data.withinCap!=='boolean')throw new Error('Invalid batch result');
+   setBatchMessage('Reference estimate: '+String.fromCharCode(36)+(data.estimatedCents/100).toFixed(2)+' for '+data.totalClips+' clips ('+data.totalSeconds+' generated seconds). Remaining: '+String.fromCharCode(36)+(data.remainingCents/100).toFixed(2)+' · '+(data.withinCap?'Within cap':'Over cap')+'. Not a live quote. No charge.');
+  }catch(e){setBatchMessage(e instanceof Error?e.message:'Batch preview unavailable');}
+  finally{setBatchLoading(false);}
+ }
  const [runwayConnectionMessage,setRunwayConnectionMessage]=useState('');
  const [runwayConnectionLoading,setRunwayConnectionLoading]=useState(false);
  async function inspectRunwayConnection(){
@@ -291,6 +314,13 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <button type="button" className="smallAction" disabled={runwayModelLoading} onClick={inspectRunwayModelBudget}>{runwayModelLoading?'Calculating…':'Estimate selected model · No charge'}</button>
    {runwayModelMessage&&<p role="status">{runwayModelMessage}</p>}
    <p className="muted">No provider call, job, reservation, or payment. Fresh pricing verification required before generation.</p>
+  </details>
+  <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Full production scene budget · No charge</summary>
+   <p className="muted">Uses production type, model and spent/reserved amounts selected above. Published reference rates are not a verified quote.</p>
+   {([['sceneCount','Number of scenes'],['secondsPerScene','Seconds per scene'],['retryClips','Additional retry clips'],['assetCents','Image assets (USD cents)'],['audioCents','Audio (USD cents)'],['otherCents','Other expenses (USD cents)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label} <input type="number" min="0" step="1" value={batchFields[key]} onChange={e=>setBatchFields(v=>({...v,[key]:e.target.value}))}/></label>)}
+   <button type="button" className="smallAction" disabled={batchLoading} onClick={inspectBatchBudget}>{batchLoading?'Calculating…':'Estimate full production · No charge'}</button>
+   {batchMessage&&<p role="status">{batchMessage}</p>}
+   <p className="muted">No job, provider call, reservation, or payment. Extra fees and actual account balance unverified.</p>
   </details>
   <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Preview provider pricing evidence · No charge</summary><p className="muted">Manually entered fields are checked for format only. No price is verified, saved as trusted, or used for generation.</p>{([['providerId','Provider ID (for example, runway)'],['modelId','Model ID'],['sourceUrl','Official HTTPS pricing URL'],['unitCostCents','USD cents per output second (whole number)'],['validUntil','Evidence expiration (ISO date/time)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label}<input style={{display:'block',width:'100%',maxWidth:480}} type="text" value={evidence[key]} onChange={e=>setEvidence(old=>({...old,[key]:e.target.value}))}/></label>)}<button type="button" className="smallAction" disabled={evidenceLoading} onClick={inspectEvidence}>{evidenceLoading?'Validating fields…':'Preview evidence format · No charge'}</button>{evidenceMessage&&<p role="status">{evidenceMessage}</p>}<p className="muted">Never enter API keys here. This cannot verify source authenticity, billing rules or real-world costs.</p></details>
   <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
