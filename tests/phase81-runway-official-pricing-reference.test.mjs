@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {previewRunwayOfficialReference as preview} from '../lib/cloud/runway-pricing-reference.mjs';
+test('Gen4 Turbo reference is 5 credits per second at 1 cent per credit',()=>{const r=preview({modelKey:'gen4_turbo',seconds:5});assert.equal(r.estimatedCents,25);assert.equal(r.trustedProviderPricing,false);assert.equal(r.generationEnabled,false);});
+test('Gen4.5 reference is 12 credits per second',()=>assert.equal(preview({modelKey:'gen4.5',seconds:10}).estimatedCents,120));
+test('unsupported or invalid model configurations blocked',()=>{assert.equal(preview({modelKey:'unlisted',seconds:5}).status,'blocked');assert.equal(preview({modelKey:'wan3_720p',seconds:1.5}).status,'blocked');});
+test('pricing reference never authorizes spending',()=>{for(const r of [preview({modelKey:'wan3_480p',seconds:5}),preview({modelKey:'unknown',seconds:5})]){assert.equal(r.paymentAuthorized,false);assert.equal(r.providerCalled,false);assert.equal(r.jobCreated,false)}});
