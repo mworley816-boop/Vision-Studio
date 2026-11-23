@@ -18,5 +18,5 @@ export async function GET(){
   quote:null,
   trustedCatalog:null
  });
- return NextResponse.json({...result,phase:16,mode:'planning_only'}, {headers});
+ return NextResponse.json({...result,phase:95,mode:'planning_only',readiness:{pricingCatalog:'missing',verifiedQuote:'missing',providerCredentials:'not_checked',generationAuthorization:'not_granted'},nextActions:['Verify current Runway API model pricing and billing units from official provider documentation','Configure a server-controlled pricing catalog with verification timestamp and expiry','Validate a matching USD provider quote against the production budget','Verify provider credentials separately without exposing secrets','Require explicit approval before any paid generation'],safety:{providerCalled:false,jobCreated:false,paymentAuthorized:false,generationEnabled:false}}, {headers});
 }
