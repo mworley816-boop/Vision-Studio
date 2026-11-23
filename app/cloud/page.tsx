@@ -29,8 +29,9 @@ export default function CloudWorkspace(){const [verification,setVerification]=us
    const kind=projects.find(p=>p.id===selected)?.kind==='series'?'episode':'music';
    const result=previewSavedStoryboardBudget({production:{kind,scenes,spentCents:item.spent_cents??0,reservedCents:item.reserved_cents??0},modelKey:savedModel});
    if(result.status!=='saved_storyboard_reference_only'){setSavedEstimate('Estimate blocked · '+String(result.reason||'Review saved scenes'));return;}
+   if(!Number.isSafeInteger(result.estimatedCents)||!Number.isSafeInteger(result.remainingCents)||!Number.isSafeInteger(result.originalSceneCount)||!Number.isSafeInteger(result.estimatedClipCount)||!Number.isSafeInteger(result.totalGeneratedSeconds)||typeof result.withinCap!=='boolean')throw Error('Invalid reference estimate');
    if(result.providerCalled!==false||result.jobCreated!==false||result.paymentAuthorized!==false||result.generationEnabled!==false)throw Error('Unexpected safety response');
-   setSavedEstimate('Saved storyboard: '+result.originalSceneCount+' scenes · '+result.estimatedClipCount+' estimated clips · '+result.totalGeneratedSeconds+' generated seconds · USD '+(result.estimatedCents/100).toFixed(2)+' reference cost · '+(result.withinCap?'Within remaining budget':'Over remaining budget')+'. No charge. Not a live provider quote. Unsaved edits excluded.');
+   setSavedEstimate('Saved storyboard: '+result.originalSceneCount+' scenes · '+result.estimatedClipCount+' estimated clips · '+result.totalGeneratedSeconds+' generated seconds · USD '+((result.estimatedCents??0)/100).toFixed(2)+' reference cost · '+(result.withinCap?'Within remaining budget':'Over remaining budget')+'. No charge. Not a live provider quote. Unsaved edits excluded.');
   }catch(e){setSavedEstimate(e instanceof Error?e.message:'Saved storyboard estimate unavailable');}
   finally{setEstimateBusy(false);}
  }
