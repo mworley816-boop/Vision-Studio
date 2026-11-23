@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {previewRunwayVideoBudget as preview} from '../lib/cloud/runway-budget-preview.mjs';
+test('music cap exactly 500 cents',()=>{const r=preview({kind:'music',seconds:100,usdCentsPerSecond:5});assert.equal(r.estimatedCents,500);assert.equal(r.withinCap,true);assert.equal(r.trustedProviderPricing,false);assert.equal(r.paymentAuthorized,false);});
+test('music quote over cap blocked for authorization',()=>{const r=preview({kind:'music',seconds:101,usdCentsPerSecond:5});assert.equal(r.withinCap,false);assert.equal(r.generationEnabled,false);});
+test('episode cap exactly 2000 cents',()=>assert.equal(preview({kind:'episode',seconds:400,usdCentsPerSecond:5}).withinCap,true));
+test('reservations reduce available budget',()=>assert.equal(preview({kind:'music',seconds:100,usdCentsPerSecond:5,reservedCents:1}).withinCap,false));
+test('negative or fractional quote rejected',()=>{for(const usdCentsPerSecond of [-1,0,1.5,NaN])assert.equal(preview({kind:'music',seconds:10,usdCentsPerSecond}).status,'blocked')});
+test('all outcomes remain non-authorizing',()=>{for(const r of [preview({kind:'music',seconds:1,usdCentsPerSecond:1}),preview({kind:'invalid',seconds:1,usdCentsPerSecond:1})]){assert.equal(r.providerCalled,false);assert.equal(r.jobCreated,false);assert.equal(r.paymentAuthorized,false);assert.equal(r.generationEnabled,false)}});
