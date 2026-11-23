@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+test('pricing status UI accepts phase 95 and displays blockers',()=>{const s=readFileSync(new URL('../components/GenerationPreflight.tsx',import.meta.url),'utf8');assert.ok(s.includes("data.phase!==95"));assert.ok(s.includes("data.readiness?.pricingCatalog!=='missing'"));assert.ok(s.includes("data.nextActions.map"));assert.ok(s.includes('Inspect Phase 95 provider readiness · No charge'));assert.ok(!s.includes('data.phase!==16'))});

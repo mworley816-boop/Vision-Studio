@@ -4,4 +4,4 @@ test('provider evidence preview UI exists',()=>assert.match(source,/Preview prov
 test('UI calls preview-only server endpoint',()=>assert.match(source,/fetch\('\/api\/provider-evidence-preview'/));
 test('UI requires fail-closed safety flags',()=>assert.match(source,/data.trustedProviderPricing!==false/));
 test('UI warns not to enter API keys',()=>assert.match(source,/Never enter API keys here/));
-test('existing trusted pricing inspection remains',()=>assert.match(source,/Inspect Phase 16 trusted pricing · No charge/));
+test('existing trusted pricing inspection remains',()=>assert.match(source,/Inspect Phase 95 provider readiness · No charge/));
