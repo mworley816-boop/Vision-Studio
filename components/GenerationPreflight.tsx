@@ -86,6 +86,33 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   }catch(e){setBatchMessage(e instanceof Error?e.message:'Batch preview unavailable');}
   finally{setBatchLoading(false);}
  }
+ const [sceneRows,setSceneRows]=useState([{seconds:'5',retries:'0'},{seconds:'8',retries:'0'}]);
+ const [sceneBreakdownMessage,setSceneBreakdownMessage]=useState('');
+ const [sceneBreakdownLines,setSceneBreakdownLines]=useState<string[]>([]);
+ const [sceneBreakdownLoading,setSceneBreakdownLoading]=useState(false);
+ async function inspectSceneBreakdown(){
+  if(sceneBreakdownLoading)return;
+  setSceneBreakdownMessage('');setSceneBreakdownLines([]);
+  const numeric=(value:string)=>/^[0-9]{1,7}$/.test(value);
+  const extraKeys=['assetCents','audioCents','otherCents'] as const;
+  const ledgerKeys=['spentCents','reservedCents'] as const;
+  if(sceneRows.some(row=>!numeric(row.seconds)||!numeric(row.retries))||extraKeys.some(k=>!numeric(batchFields[k]))||ledgerKeys.some(k=>!numeric(runwayQuote[k]))){setSceneBreakdownMessage('Enter whole-number seconds, retries, and cents.');return;}
+  setSceneBreakdownLoading(true);
+  try{
+   const scenes=sceneRows.map(row=>({seconds:Number(row.seconds),retries:Number(row.retries)}));
+   const extras=Object.fromEntries(extraKeys.map(k=>[k,Number(batchFields[k])]));
+   const ledger=Object.fromEntries(ledgerKeys.map(k=>[k,Number(runwayQuote[k])]));
+   const response=await fetch('/api/runway-scene-breakdown-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:runwayQuote.kind,modelKey:runwayModel,scenes,...extras,...ledger})});
+   if(!response.ok)throw new Error('Owner-only scene breakdown unavailable');
+   const data=await response.json();
+   if(data.trustedProviderPricing!==false||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false)throw new Error('Unexpected safety response');
+   if(data.status==='blocked'){setSceneBreakdownMessage('Blocked · '+String(data.reason||'Invalid inputs'));return;}
+   if(data.status!=='reference_scene_breakdown_only'||!Array.isArray(data.scenes)||!Number.isSafeInteger(data.estimatedCents)||!Number.isSafeInteger(data.remainingCents)||typeof data.withinCap!=='boolean')throw new Error('Unexpected scene breakdown result');
+   setSceneBreakdownLines(data.scenes.map((row:{scene:number;generatedSeconds:number;estimatedCents:number})=>'Scene '+row.scene+' · '+row.generatedSeconds+' generated seconds · USD '+(row.estimatedCents/100).toFixed(2)));
+   setSceneBreakdownMessage('Total reference estimate: USD '+(data.estimatedCents/100).toFixed(2)+' · Remaining budget: USD '+(data.remainingCents/100).toFixed(2)+' · '+(data.withinCap?'Within cap':'Over cap')+' · NOT a verified quote · No charge.');
+  }catch(e){setSceneBreakdownMessage(e instanceof Error?e.message:'Scene breakdown unavailable');}
+  finally{setSceneBreakdownLoading(false);}
+ }
  const [runwayConnectionMessage,setRunwayConnectionMessage]=useState('');
  const [runwayConnectionLoading,setRunwayConnectionLoading]=useState(false);
  async function inspectRunwayConnection(){
@@ -321,6 +348,20 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    <button type="button" className="smallAction" disabled={batchLoading} onClick={inspectBatchBudget}>{batchLoading?'Calculating…':'Estimate full production · No charge'}</button>
    {batchMessage&&<p role="status">{batchMessage}</p>}
    <p className="muted">No job, provider call, reservation, or payment. Extra fees and actual account balance unverified.</p>
+  </details>
+  <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Scene-by-scene cost breakdown · No charge</summary>
+   <p className="muted">Set each scene duration and its expected retries. Uses the selected Runway model, production type, expenses, and spent/reserved amounts above. Reference estimates only.</p>
+   {sceneRows.map((row,index)=><div key={index} style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginTop:8}}>
+    <strong>Scene {index+1}</strong>
+    <label>Seconds <input type="number" min="1" max="30" step="1" value={row.seconds} onChange={e=>setSceneRows(rows=>rows.map((r,i)=>i===index?{...r,seconds:e.target.value}:r))}/></label>
+    <label>Retries <input type="number" min="0" max="10" step="1" value={row.retries} onChange={e=>setSceneRows(rows=>rows.map((r,i)=>i===index?{...r,retries:e.target.value}:r))}/></label>
+    <button type="button" disabled={sceneRows.length===1} onClick={()=>setSceneRows(rows=>rows.filter((_,i)=>i!==index))}>Remove</button>
+   </div>)}
+   <button type="button" disabled={sceneRows.length>=100} onClick={()=>setSceneRows(rows=>[...rows,{seconds:'5',retries:'0'}])}>Add scene</button>
+   <button type="button" className="smallAction" disabled={sceneBreakdownLoading} onClick={inspectSceneBreakdown}>{sceneBreakdownLoading?'Calculating…':'Calculate scene breakdown · No charge'}</button>
+   {sceneBreakdownLines.length>0&&<ul>{sceneBreakdownLines.map((line,index)=><li key={index}>{line}</li>)}</ul>}
+   {sceneBreakdownMessage&&<p role="status">{sceneBreakdownMessage}</p>}
+   <p className="muted">No provider call, job, reservation, or payment. Rates and other costs require fresh verification.</p>
   </details>
   <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Preview provider pricing evidence · No charge</summary><p className="muted">Manually entered fields are checked for format only. No price is verified, saved as trusted, or used for generation.</p>{([['providerId','Provider ID (for example, runway)'],['modelId','Model ID'],['sourceUrl','Official HTTPS pricing URL'],['unitCostCents','USD cents per output second (whole number)'],['validUntil','Evidence expiration (ISO date/time)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label}<input style={{display:'block',width:'100%',maxWidth:480}} type="text" value={evidence[key]} onChange={e=>setEvidence(old=>({...old,[key]:e.target.value}))}/></label>)}<button type="button" className="smallAction" disabled={evidenceLoading} onClick={inspectEvidence}>{evidenceLoading?'Validating fields…':'Preview evidence format · No charge'}</button>{evidenceMessage&&<p role="status">{evidenceMessage}</p>}<p className="muted">Never enter API keys here. This cannot verify source authenticity, billing rules or real-world costs.</p></details>
   <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
