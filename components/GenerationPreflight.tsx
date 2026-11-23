@@ -43,6 +43,26 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
   }catch(e){setRunwayBudgetMessage(e instanceof Error?e.message:'Budget preview unavailable');}
   finally{setRunwayBudgetLoading(false);}
  }
+ const [runwayModel,setRunwayModel]=useState('gen4_turbo');
+ const [runwayModelMessage,setRunwayModelMessage]=useState('');
+ const [runwayModelLoading,setRunwayModelLoading]=useState(false);
+ async function inspectRunwayModelBudget(){
+  if(runwayModelLoading)return;
+  setRunwayModelMessage('');
+  const fields=['seconds','spentCents','reservedCents'] as const;
+  if(fields.some(k=>!/^[0-9]{1,7}$/.test(runwayQuote[k]))){setRunwayModelMessage('Enter whole-number seconds and cents.');return;}
+  setRunwayModelLoading(true);
+  try{
+   const response=await fetch('/api/runway-model-budget-preview',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({modelKey:runwayModel,kind:runwayQuote.kind,...Object.fromEntries(fields.map(k=>[k,Number(runwayQuote[k])]))})});
+   if(!response.ok)throw new Error('Model reference preview unavailable');
+   const data=await response.json();
+   if(data.trustedProviderPricing!==false||data.generationEnabled!==false||data.providerCalled!==false||data.jobCreated!==false||data.paymentAuthorized!==false)throw new Error('Unexpected model preview safety response');
+   if(data.status==='blocked'){setRunwayModelMessage('Blocked · '+String(data.reason||'Invalid inputs'));return;}
+   if(data.status!=='reference_budget_only'||!Number.isSafeInteger(data.estimatedCents)||!Number.isSafeInteger(data.remainingCents)||typeof data.withinCap!=='boolean')throw new Error('Invalid model reference result');
+   setRunwayModelMessage('Reference estimate: '+String.fromCharCode(36)+(data.estimatedCents/100).toFixed(2)+' · Remaining: '+String.fromCharCode(36)+(data.remainingCents/100).toFixed(2)+' · '+(data.withinCap?'Within cap':'Over cap')+' · Published rates only; retries and other costs excluded. NOT a verified job quote. No charge.');
+  }catch(e){setRunwayModelMessage(e instanceof Error?e.message:'Model reference unavailable');}
+  finally{setRunwayModelLoading(false);}
+ }
  const [runwayConnectionMessage,setRunwayConnectionMessage]=useState('');
  const [runwayConnectionLoading,setRunwayConnectionLoading]=useState(false);
  async function inspectRunwayConnection(){
@@ -262,6 +282,15 @@ export function GenerationPreflight({projectId,productionId}:{projectId:string;p
    {([['seconds','Output duration (seconds)'],['usdCentsPerSecond','Hypothetical USD cents per second'],['spentCents','Already spent (cents, manual)'],['reservedCents','Already reserved (cents, manual)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label} <input type="number" min={key==='seconds'||key==='usdCentsPerSecond'?'1':'0'} step="1" value={runwayQuote[key]} onChange={e=>setRunwayQuote(v=>({...v,[key]:e.target.value}))}/></label>)}
    <button type="button" className="smallAction" disabled={runwayBudgetLoading} onClick={inspectRunwayBudget}>{runwayBudgetLoading?'Calculating…':'Calculate hypothetical Runway cost · No charge'}</button>
    {runwayBudgetMessage&&<p role="status">{runwayBudgetMessage}</p>}
+  </details>
+  <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Runway model pricing reference · No charge</summary>
+   <p className="muted">Published reference rates only, not a live quote. Uses duration, production type, and manual spent/reserved values from the Runway budget calculator above. Retries, taxes and other assets are excluded.</p>
+   <label style={{display:'block'}}>Model configuration <select value={runwayModel} onChange={e=>setRunwayModel(e.target.value)}>
+    <option value="gen4_turbo">Gen-4 Turbo</option><option value="gen4.5">Gen-4.5</option><option value="wan3_480p">WAN 3 · 480p</option><option value="wan3_720p">WAN 3 · 720p</option><option value="wan3_1080p">WAN 3 · 1080p</option><option value="kling3.0_standard_no_audio">Kling 3 Standard · no audio</option><option value="kling3.0_standard_audio">Kling 3 Standard · audio</option><option value="veo3.1_fast_no_audio">Veo 3.1 Fast · no audio</option><option value="veo3.1_fast_audio">Veo 3.1 Fast · audio</option>
+   </select></label>
+   <button type="button" className="smallAction" disabled={runwayModelLoading} onClick={inspectRunwayModelBudget}>{runwayModelLoading?'Calculating…':'Estimate selected model · No charge'}</button>
+   {runwayModelMessage&&<p role="status">{runwayModelMessage}</p>}
+   <p className="muted">No provider call, job, reservation, or payment. Fresh pricing verification required before generation.</p>
   </details>
   <details style={{marginTop:12,padding:12,border:'1px solid #856b87',borderRadius:10}}><summary style={{cursor:'pointer',fontWeight:600}}>Preview provider pricing evidence · No charge</summary><p className="muted">Manually entered fields are checked for format only. No price is verified, saved as trusted, or used for generation.</p>{([['providerId','Provider ID (for example, runway)'],['modelId','Model ID'],['sourceUrl','Official HTTPS pricing URL'],['unitCostCents','USD cents per output second (whole number)'],['validUntil','Evidence expiration (ISO date/time)']] as const).map(([key,label])=><label key={key} style={{display:'block',marginTop:8}}>{label}<input style={{display:'block',width:'100%',maxWidth:480}} type="text" value={evidence[key]} onChange={e=>setEvidence(old=>({...old,[key]:e.target.value}))}/></label>)}<button type="button" className="smallAction" disabled={evidenceLoading} onClick={inspectEvidence}>{evidenceLoading?'Validating fields…':'Preview evidence format · No charge'}</button>{evidenceMessage&&<p role="status">{evidenceMessage}</p>}<p className="muted">Never enter API keys here. This cannot verify source authenticity, billing rules or real-world costs.</p></details>
   <button type="button" className="smallAction" disabled={pricingLoading} onClick={inspectPhase16Pricing}>{pricingLoading?'Checking trusted pricing…':'Inspect Phase 16 trusted pricing · No charge'}</button>
