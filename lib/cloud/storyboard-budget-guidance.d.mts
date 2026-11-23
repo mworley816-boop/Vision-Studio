@@ -1,0 +1,3 @@
+import type {SavedStoryboardBudgetResult} from './runway-saved-storyboard-budget.mjs';
+export type BudgetGuidance={readonly status:'unavailable'|'over_budget'|'within_reference_budget';readonly reason?:string;readonly overByCents?:number;readonly largestCategory?:string;readonly largestCategoryCents?:number;readonly suggestions?:readonly string[];readonly requiresFreshPricingVerification?:true;readonly generationEnabled:false;readonly providerCalled:false;readonly jobCreated:false;readonly paymentAuthorized:false};
+export declare function explainStoryboardBudget(result:SavedStoryboardBudgetResult):BudgetGuidance;
