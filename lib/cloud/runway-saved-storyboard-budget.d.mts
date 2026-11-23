@@ -1,0 +1,21 @@
+export type SavedStoryboardScene={description:string;duration:number};
+export type SavedStoryboardProduction={kind:'music'|'episode';scenes:SavedStoryboardScene[];spentCents?:number;reservedCents?:number};
+export type SavedStoryboardBudgetInput={production?:SavedStoryboardProduction;modelKey?:string;assetCents?:number;audioCents?:number;otherCents?:number};
+export type SavedStoryboardBudgetResult={
+ readonly status:'blocked'|'saved_storyboard_reference_only';
+ readonly reason?:string;
+ readonly originalSceneCount?:number;
+ readonly estimatedClipCount?:number;
+ readonly totalGeneratedSeconds?:number;
+ readonly estimatedCents?:number;
+ readonly remainingCents?:number;
+ readonly withinCap?:boolean;
+ readonly sourceUrl?:string;
+ readonly reviewedOn?:string;
+ readonly trustedProviderPricing:false;
+ readonly generationEnabled:false;
+ readonly providerCalled:false;
+ readonly jobCreated:false;
+ readonly paymentAuthorized:false;
+};
+export declare function previewSavedStoryboardBudget(input?:SavedStoryboardBudgetInput):SavedStoryboardBudgetResult;
