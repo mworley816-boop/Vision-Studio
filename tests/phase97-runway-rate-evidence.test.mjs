@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {inspectRunwayRateEvidence as inspect} from '../lib/cloud/runway-rate-evidence.mjs';
+const evidence={provider:'runway',modelKey:'gen4_turbo',currency:'USD',unit:'output_second',sourceUrl:'https://docs.dev.runwayml.com/guides/pricing/',verifiedAtMs:1000,expiresAtMs:5000,centsPerSecond:5};
+const input={evidence,modelKey:'gen4_turbo',seconds:30,nowMs:2000};
+test('fresh matching rate yields preview only, never authorization',()=>{const r=inspect(input);assert.equal(r.estimatedCents,150);assert.equal(r.requiresJobQuote,true);for(const k of ['generationEnabled','providerCalled','jobCreated','paymentAuthorized'])assert.equal(r[k],false)});
+test('reject missing, expired, future, excessive lifetime or mismatched evidence',()=>{for(const patch of [{evidence:null},{nowMs:5000},{nowMs:999},{modelKey:'other'},{evidence:{...evidence,expiresAtMs:90000000}},{evidence:{...evidence,sourceUrl:'https://example.com'}},{evidence:{...evidence,currency:'EUR'}},{seconds:0}])assert.equal(inspect({...input,...patch}).status,'blocked')});
