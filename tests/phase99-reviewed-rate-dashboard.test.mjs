@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../app/cloud/page.tsx',import.meta.url),'utf8');
+const section=source.split('async function estimateSavedStoryboard')[1].split('async function add(')[0];
+test('reviewed rate preview uses saved generated duration and selected model',()=>{assert.match(section,/fetch\('\/api\/runway-reviewed-rate'/);assert.match(section,/modelKey:savedModel,seconds:result.totalGeneratedSeconds/);assert.match(section,/rate\.requiresJobQuote!==true/);assert.match(section,/rate\.expiresAtMs<=Date\.now\(\)/);});
+test('reviewed preview rejects unsafe responses and ignores stale requests',()=>{for(const key of ['generationEnabled','providerCalled','jobCreated','paymentAuthorized'])assert.ok(section.includes('rate.'+key+'!==false'));assert.match(section,/estimateRequest!==estimateVersion\.current/);assert.match(source,/estimateVersion\.current\+=1;setReviewedRate\(''\)/);});
